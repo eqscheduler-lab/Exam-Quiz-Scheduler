@@ -11,19 +11,37 @@ import SchedulePage from "@/pages/SchedulePage";
 import MyExamsPage from "@/pages/MyExamsPage";
 
 function Router() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Switch>
+        <Route path="/login" component={LoginPage} />
+        <Route>
+          <Redirect to="/login" />
+        </Route>
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      <Route path="/login" component={LoginPage} />
-      
-      {/* Protected Routes would logically be wrapped, but simple routing works with internal auth checks */}
+      <Route path="/login">
+        <Redirect to="/" />
+      </Route>
       <Route path="/" component={Dashboard} />
       <Route path="/schedule" component={SchedulePage} />
       <Route path="/my-exams" component={MyExamsPage} />
-      
-      {/* Admin Placeholders - reusing MyExams or Dashboard for now as structure is similar */}
       <Route path="/admin/users" component={Dashboard} /> 
       <Route path="/admin/subjects" component={Dashboard} />
-
       <Route component={NotFound} />
     </Switch>
   );

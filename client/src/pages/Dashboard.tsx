@@ -12,8 +12,9 @@ export default function Dashboard() {
   
   // Fetch exams for today for the current user (if teacher) or all (if admin)
   const today = new Date();
+  const weekStart = format(today, "yyyy-MM-dd"); // Use a stable string for key
   const { data: exams, isLoading } = useExams({
-    weekStart: today.toISOString(),
+    weekStart: weekStart,
   });
 
   const todaysExams = exams?.filter(e => {

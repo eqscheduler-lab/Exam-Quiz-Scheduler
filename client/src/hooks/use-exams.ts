@@ -10,13 +10,13 @@ type ExamFilters = {
 };
 
 export function useExams(filters?: ExamFilters) {
-  const queryKey = [api.exams.list.path, filters];
+  const queryKey = [api.exams.list.path, JSON.stringify(filters)];
   
   return useQuery({
     queryKey,
     queryFn: async () => {
       const url = filters 
-        ? `${api.exams.list.path}?${new URLSearchParams(filters as any).toString()}`
+        ? `${api.exams.list.path}?${new URLSearchParams(Object.entries(filters).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))}`
         : api.exams.list.path;
       
       const res = await fetch(url, { credentials: "include" });
