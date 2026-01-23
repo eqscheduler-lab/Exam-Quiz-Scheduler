@@ -96,11 +96,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(examEvents.createdByUserId, filters.teacherId));
     }
 
-    return await db.select({
-      ...examEvents._.columns,
-      subject: subjects,
-      creator: users
-    })
+    return await db.select()
     .from(examEvents)
     .innerJoin(subjects, eq(examEvents.subjectId, subjects.id))
     .innerJoin(users, eq(examEvents.createdByUserId, users.id))

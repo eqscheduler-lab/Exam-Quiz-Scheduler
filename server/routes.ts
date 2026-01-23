@@ -32,7 +32,11 @@ export async function registerRoutes(
     }
 
     const exams = await storage.getExams(filters);
-    res.json(exams);
+    res.json(exams.map(e => ({
+      ...e.exam_events,
+      subject: e.subjects,
+      creator: e.users
+    })));
   });
 
   app.post(api.exams.create.path, async (req, res) => {
