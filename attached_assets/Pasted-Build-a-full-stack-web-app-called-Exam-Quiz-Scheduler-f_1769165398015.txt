@@ -1,0 +1,131 @@
+Build a full-stack web app called “Exam & Quiz Scheduler” for a school to schedule exams/quizzes across the academic year.
+
+TECH STACK (use this unless impossible):
+- Backend: Node.js + Express
+- DB: SQLite (via Prisma) so it works easily on Replit
+- Frontend: React + Vite (or Next.js if easier)
+- Auth: JWT + bcrypt
+- PDF generation: server-side PDF export (pdfkit or puppeteer). The schedule table must be printable as a PDF.
+
+CORE CONCEPTS & RULES
+1) Working days and periods:
+- Monday–Thursday: 8 periods/day
+- Friday: 4 periods/day
+- Each period is 50 minutes.
+- The UI should allow picking a day + period OR day + exact start time, but it MUST map to a period index.
+  - Admin can configure bell schedule (period start times) in Settings, but provide a sensible default.
+- Scheduling must prevent invalid periods (e.g., period 6 on Friday is not allowed).
+
+2) Exam booking limit rule:
+- Teachers are NOT allowed to book an exam for the same Class + Section if that Class+Section already has 3 exams on that day.
+- When they try, show this message exactly:
+  “The maximum number of exams is reached, please choose another day to conduct your exam.”
+
+3) Exam fields:
+- Title (required)
+- Type: Exam or Quiz (dropdown)
+- Subject (select from subjects)
+- Day (date)
+- Period (1..8 or 1..4 depending on day) and auto-derived time window (50 min)
+- Class Program: one of (AET, AMT, ENI, CAI, ASP)
+- Section: integer (1,2,3,...)
+- CreatedBy teacher
+- Status: Scheduled / Cancelled (don’t hard delete; keep history)
+- Audit: createdAt, updatedAt
+
+ROLES & PERMISSIONS
+Roles:
+A) Teacher
+- Can book exams/quizzes for their assigned subjects (or allow all subjects initially, but keep structure for assignment)
+- Can view schedule
+- Can manage ONLY their own exams: create, reschedule, cancel
+- Cannot exceed 3-exams-per-day limit per Class+Section
+
+B) Admin
+- Full access to everything
+- Staff management: add/remove staff, set roles, reset passwords
+- Subject management: add/remove subjects with (subjectName, subjectCode)
+- Student management: add/remove students with:
+  - studentName
+  - studentID (unique)
+  - classProgram (AET/AMT/ENI/CAI/ASP)
+  - section (1,2,3,...)
+- Can view schedule as a TABLE and export as PDF for printing
+- Can edit or add exams too
+
+C) Principal and Vice Principal
+- Overhaul view (read everything)
+- They CAN edit or add on the schedule (same power as admin regarding exams, but no staff/subjects/students management unless you want it — default: no staff/subjects/students management)
+
+D) Exam Schedule Coordinator
+- Runs the system:
+  - full schedule view
+  - can add/edit exams
+  - can export weekly schedule to PDF
+  - can “Publish weekly schedule” (a flag) for teachers/students view
+- Can generate “Weekly Schedule PDF” for Monday–Friday of a selected week.
+- The coordinator can also export a full schedule by date range.
+
+DATA MODEL (Prisma)
+Create these tables:
+- User: id, name, email(unique), passwordHash, role(enum: TEACHER, ADMIN, PRINCIPAL, VICE_PRINCIPAL, COORDINATOR), isActive
+- Subject: id, subjectName, subjectCode(unique)
+- Student: id, studentName, studentID(unique), classProgram(enum), section(int)
+- ExamEvent: id, title, type(enum EXAM/QUIZ), date (YYYY-MM-DD), period(int), startTime, endTime, classProgram(enum), section(int), subjectId(FK), createdByUserId(FK), status(enum SCHEDULED/CANCELLED), notes(optional)
+- Settings: id (singleton), bellScheduleJson (stores start times per day type), maxExamsPerClassSectionPerDay default=3
+
+VALIDATION LOGIC
+On create/reschedule:
+- Reject if period exceeds allowed for that weekday (Mon–Thu max 8, Fri max 4).
+- Enforce max 3 scheduled items per day for the same classProgram + section. Only count status=SCHEDULED.
+- If limit reached, return 400 with the exact message required.
+
+UI REQUIREMENTS
+1) Login page
+2) Role-based dashboard
+3) Booking form (Teacher/Admin/Coordinator/Principal/Vice Principal):
+- Title, Type, Subject, Date, Period, Class Program, Section
+- On selecting date, show allowed periods based on weekday.
+- Show warning before submit if near the limit (e.g., “2/3 used”) but enforce on submit.
+
+4) Schedule table view:
+- A grid/table:
+  - Days as vertical column (rows)
+  - Periods as horizontal columns
+  - Each cell shows items scheduled for that day/period (can be multiple; list stacked)
+  - Clicking an item opens details modal with actions (if permitted).
+- Filters:
+  - Week selector (default current week)
+  - Filter by classProgram + section
+  - Filter by teacher (admin/coordinator only)
+  - Filter by subject
+
+5) PDF Export (Admin + Coordinator):
+- Export the current filtered weekly schedule.
+- PDF must be printer-friendly (A4 portrait or landscape; pick what fits best).
+- Include header: School Name (placeholder), Week range, Generated date/time, and legend.
+- The table must match the UI grid: days down, periods across.
+
+6) Publish Weekly Schedule (Coordinator):
+- Coordinator can mark a week as “Published”.
+- Teachers and students (students can be view-only, optional) can view published schedules.
+- If you don’t build a student login, at least allow a “Public view link” for a published week with read-only access (no personal data).
+
+EXTRA DETAILS
+- Working timezone: Asia/Dubai.
+- Use clean UI, responsive layout, and clear role-based menus.
+- Seed sample data: admin, coordinator, principal, vice principal, 2 teachers, 10 students, 5 subjects.
+- Provide README with:
+  - How to run
+  - Default logins
+  - How to export PDF
+  - Where the “max 3 exams/day” rule is enforced
+
+DELIVERABLES
+- Full working app in Replit
+- Database migrations
+- Seed script
+- API documentation (brief)
+- Ensure no crashes if DB is empty
+
+Start by scaffolding the project, then implement DB schema, auth, role middleware, CRUD endpoints, UI screens, and PDF export.
