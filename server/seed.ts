@@ -11,6 +11,8 @@ async function seed() {
     { username: "coordinator", password, role: "COORDINATOR", name: "Demo Coordinator", email: "coordinator@example.com" },
     { username: "principal", password, role: "PRINCIPAL", name: "Demo Principal", email: "principal@example.com" },
     { username: "vice_principal", password, role: "VICE_PRINCIPAL", name: "Demo Vice Principal", email: "vp@example.com" },
+    { username: "teacher1", password, role: "TEACHER", name: "Teacher One", email: "keating@school.com" },
+    { username: "teacher2", password, role: "TEACHER", name: "Teacher Two", email: "klump@school.com" },
   ];
 
   console.log("Seeding demo accounts...");
@@ -19,7 +21,7 @@ async function seed() {
     try {
       await db.insert(users).values(user).onConflictDoUpdate({
         target: users.username,
-        set: { role: user.role, name: user.name, email: user.email }
+        set: { password: user.password, role: user.role, name: user.name, email: user.email }
       });
       console.log(`Created/Updated user: ${user.username}`);
     } catch (e) {
