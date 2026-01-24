@@ -14,7 +14,7 @@ export interface IStorage {
 
   // Classes
   getAllClasses(): Promise<Class[]>;
-  createClass(classData: typeof classes.$inferInsert): Promise<Class>;
+  createClass(classData: { name: string }): Promise<Class>;
 
   // Subjects
   getAllSubjects(): Promise<Subject[]>;
@@ -64,7 +64,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(classes);
   }
 
-  async createClass(classData: typeof classes.$inferInsert): Promise<Class> {
+  async createClass(classData: { name: string }): Promise<Class> {
     const [newClass] = await db.insert(classes).values(classData).returning();
     return newClass;
   }
@@ -104,7 +104,12 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(examEvents.createdByUserId, filters.teacherId));
     }
 
-    const results = await db.select()
+    const results = await db.select({
+      exam_events: examEvents,
+      subjects: subjects,
+      users: users,
+      classes: classes
+    })
     .from(examEvents)
     .innerJoin(subjects, eq(examEvents.subjectId, subjects.id))
     .innerJoin(users, eq(examEvents.createdByUserId, users.id))
@@ -145,7 +150,7 @@ export class DatabaseStorage implements IStorage {
         eq(examEvents.status, "SCHEDULED")
       ));
     
-    return result.count;
+    return Number(result.count);
   }
 
   async getSettings(): Promise<typeof settings.$inferSelect | undefined> {

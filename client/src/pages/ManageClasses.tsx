@@ -21,14 +21,29 @@ export default function ManageClasses() {
 
   const createMutation = useMutation({
     mutationFn: async (name: string) => {
-      const res = await apiRequest("POST", "/api/classes", { name });
-      return res.json();
+      const res = await fetch("/api/classes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to create class");
+      }
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/classes"] });
       setNewClassName("");
       toast({ title: "Success", description: "Class created successfully" });
     },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
   });
 
   const deleteMutation = useMutation({

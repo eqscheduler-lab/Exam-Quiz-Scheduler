@@ -24,7 +24,7 @@ export const api = {
         password: z.string(),
       }),
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: z.any(),
         401: z.object({ message: z.string() }),
       },
     },
@@ -39,45 +39,8 @@ export const api = {
       method: "GET" as const,
       path: "/api/user",
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
-        401: z.void(), // Not logged in
-      },
-    },
-  },
-  exams: {
-    list: {
-      method: "GET" as const,
-      path: "/api/exams",
-      input: z.object({
-        weekStart: z.string().optional(), // ISO date string
-        classId: z.coerce.number().optional(),
-        teacherId: z.coerce.number().optional(),
-      }).optional(),
-      responses: {
-        200: z.array(z.any()),
-      },
-    },
-    create: {
-      method: "POST" as const,
-      path: "/api/exams",
-      input: insertExamEventSchema.extend({
-        date: z.coerce.date(), // Ensure date is parsed correctly
-      }),
-      responses: {
-        201: z.custom<typeof examEvents.$inferSelect>(),
-        400: z.object({ message: z.string() }), // For limit errors
-      },
-    },
-    update: {
-      method: "PATCH" as const,
-      path: "/api/exams/:id",
-      input: insertExamEventSchema.partial().extend({
-         date: z.coerce.date().optional(),
-      }),
-      responses: {
-        200: z.custom<typeof examEvents.$inferSelect>(),
-        400: z.object({ message: z.string() }),
-        404: errorSchemas.notFound,
+        200: z.any(),
+        401: z.void(),
       },
     },
   },
@@ -98,12 +61,49 @@ export const api = {
       },
     },
   },
+  exams: {
+    list: {
+      method: "GET" as const,
+      path: "/api/exams",
+      input: z.object({
+        weekStart: z.string().optional(),
+        classId: z.coerce.number().optional(),
+        teacherId: z.coerce.number().optional(),
+      }).optional(),
+      responses: {
+        200: z.array(z.any()),
+      },
+    },
+    create: {
+      method: "POST" as const,
+      path: "/api/exams",
+      input: insertExamEventSchema.extend({
+        date: z.coerce.date(),
+      }),
+      responses: {
+        201: z.any(),
+        400: z.object({ message: z.string() }),
+      },
+    },
+    update: {
+      method: "PATCH" as const,
+      path: "/api/exams/:id",
+      input: insertExamEventSchema.partial().extend({
+         date: z.coerce.date().optional(),
+      }),
+      responses: {
+        200: z.any(),
+        400: z.object({ message: z.string() }),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
   subjects: {
     list: {
       method: "GET" as const,
       path: "/api/subjects",
       responses: {
-        200: z.array(z.custom<typeof subjects.$inferSelect>()),
+        200: z.array(z.any()),
       },
     },
     create: {
@@ -111,7 +111,7 @@ export const api = {
       path: "/api/subjects",
       input: insertSubjectSchema,
       responses: {
-        201: z.custom<typeof subjects.$inferSelect>(),
+        201: z.any(),
       },
     },
   },
@@ -120,7 +120,7 @@ export const api = {
       method: "GET" as const,
       path: "/api/students",
       responses: {
-        200: z.array(z.custom<typeof students.$inferSelect>()),
+        200: z.array(z.any()),
       },
     },
   },
@@ -129,7 +129,7 @@ export const api = {
       method: "GET" as const,
       path: "/api/users",
       responses: {
-        200: z.array(z.custom<typeof users.$inferSelect>()),
+        200: z.array(z.any()),
       },
     },
   },
@@ -139,11 +139,10 @@ export const api = {
       path: "/api/schedule/pdf",
       input: z.object({
         weekStart: z.string(),
-        classProgram: z.string().optional(),
-        section: z.coerce.number().optional(),
+        classId: z.coerce.number().optional(),
       }),
       responses: {
-        200: z.any(), // Binary PDF data
+        200: z.any(),
       },
     },
   },

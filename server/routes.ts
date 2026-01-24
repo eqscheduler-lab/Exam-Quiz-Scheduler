@@ -7,7 +7,7 @@ import { z } from "zod";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
-import { examEvents, subjects, users, students, settings } from "@shared/schema";
+import { examEvents, subjects, users, students, settings, classes } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -34,7 +34,6 @@ export async function registerRoutes(
     try {
       const input = api.exams.create.input.parse(req.body);
       
-      // 1. Validation: Max periods per day
       const date = new Date(input.date);
       const dayOfWeek = getDay(date);
       const isFriday = dayOfWeek === 5;
@@ -46,7 +45,6 @@ export async function registerRoutes(
         });
       }
 
-      // 2. Validation: Max 3 exams per day rule
       const count = await storage.getExamCountForClassDay(date, input.classId);
       if (count >= 3) {
         return res.status(400).json({ 
@@ -80,14 +78,27 @@ export async function registerRoutes(
 
   // === CLASSES ===
   app.get("/api/classes", async (req, res) => {
-    const classes = await storage.getAllClasses();
-    res.json(classes);
+    try {
+      const classesData = await storage.getAllClasses();
+      res.json(classesData);
+    } catch (err) {
+      console.error("Get classes error:", err);
+      res.status(500).json({ message: "Failed to fetch classes" });
+    }
   });
 
   app.post("/api/classes", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
-    const newClass = await storage.createClass(req.body);
-    res.json(newClass);
+    try {
+      if (!req.body.name) {
+        return res.status(400).json({ message: "Class name is required" });
+      }
+      const newClass = await storage.createClass(req.body);
+      res.json(newClass);
+    } catch (err) {
+      console.error("Create class error:", err);
+      res.status(500).json({ message: "Failed to create class" });
+    }
   });
 
   app.delete("/api/classes/:id", async (req, res) => {
@@ -97,8 +108,8 @@ export async function registerRoutes(
 
   // === SUBJECTS ===
   app.get(api.subjects.list.path, async (req, res) => {
-    const subjects = await storage.getAllSubjects();
-    res.json(subjects);
+    const subjectsList = await storage.getAllSubjects();
+    res.json(subjectsList);
   });
   
   app.post(api.subjects.create.path, async (req, res) => {
@@ -111,14 +122,14 @@ export async function registerRoutes(
   // === USERS/STUDENTS ===
   app.get(api.users.list.path, async (req, res) => {
      if (!req.isAuthenticated()) return res.sendStatus(401);
-     const users = await storage.getAllUsers();
-     res.json(users);
+     const usersList = await storage.getAllUsers();
+     res.json(usersList);
   });
 
   app.get(api.students.list.path, async (req, res) => {
      if (!req.isAuthenticated()) return res.sendStatus(401);
-     const students = await storage.getAllStudents();
-     res.json(students);
+     const studentsList = await storage.getAllStudents();
+     res.json(studentsList);
   });
 
   // === PDF EXPORT ===
@@ -127,10 +138,9 @@ export async function registerRoutes(
          const weekStartStr = req.query.weekStart as string;
          const weekStart = new Date(weekStartStr);
          const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-         const classProgram = req.query.classProgram as string | undefined;
-         const section = req.query.section ? Number(req.query.section) : undefined;
+         const classId = req.query.classId ? Number(req.query.classId) : undefined;
          
-         const exams = await storage.getExams({ weekStart, weekEnd, classProgram, section });
+         const exams = await storage.getExams({ weekStart, weekEnd, classId });
          
          const doc = new PDFDocument({ layout: 'landscape', size: 'A4' });
          res.setHeader('Content-Type', 'application/pdf');
@@ -140,9 +150,6 @@ export async function registerRoutes(
          // Header
          doc.fontSize(20).text('Exam & Quiz Schedule', { align: 'center' });
          doc.fontSize(12).text(`Week of ${format(weekStart, 'MMM d, yyyy')} - ${format(weekEnd, 'MMM d, yyyy')}`, { align: 'center' });
-         if (classProgram) {
-             doc.text(`Class: ${classProgram} ${section || ''}`, { align: 'center' });
-         }
          doc.moveDown();
 
          // Grid Configuration
@@ -171,15 +178,12 @@ export async function registerRoutes(
              // Draw cells
              for (let p = 1; p <= periods; p++) {
                  const x = startX + 50 + (p-1) * cellWidth;
-                 // Skip periods > 4 on Friday
                  if (day === 'Fri' && p > 4) {
                      doc.rect(x, y, cellWidth, cellHeight).fill('#f0f0f0');
                      doc.fillColor('black'); // Reset
                      continue;
                  }
                  
-                 // Find exams for this slot
-                 // Need to match date and period
                  const date = addDays(weekStart, i);
                  const dayExams = exams.filter(e => {
                      const eDate = new Date(e.date);
@@ -192,21 +196,18 @@ export async function registerRoutes(
                      doc.fontSize(8);
                      let textY = y + 5;
                      dayExams.forEach(e => {
-                         doc.font('Helvetica-Bold').text(e.classProgram + ' ' + e.section, x + 2, textY, { width: cellWidth - 4 });
+                         doc.font('Helvetica-Bold').text(e.class.name, x + 2, textY, { width: cellWidth - 4 });
                          doc.font('Helvetica').text(e.subject.code, x + 2, textY + 10, { width: cellWidth - 4 });
                          doc.text(e.type, x + 2, textY + 20, { width: cellWidth - 4 });
                          textY += 35;
                      });
                  }
                  
-                 // Draw vertical lines
                  doc.moveTo(x, y).lineTo(x, y + cellHeight).stroke();
              }
-             // Draw last vertical line
              doc.moveTo(startX + 50 + periods * cellWidth, y).lineTo(startX + 50 + periods * cellWidth, y + cellHeight).stroke();
          });
          
-         // Bottom line
          doc.moveTo(startX, startY + days.length * cellHeight).lineTo(startX + 50 + periods * cellWidth, startY + days.length * cellHeight).stroke();
 
          doc.end();
@@ -227,7 +228,6 @@ async function seed() {
     if (existingUsers.length === 0) {
         const passwordHash = await bcrypt.hash("password123", 10);
         
-        // Admin
         await storage.createUser({
             username: "admin",
             password: passwordHash,
@@ -237,7 +237,6 @@ async function seed() {
             isActive: true
         });
         
-        // Coordinator
         await storage.createUser({
             username: "coordinator",
             password: passwordHash,
@@ -247,7 +246,6 @@ async function seed() {
             isActive: true
         });
 
-        // Principal
         await storage.createUser({
             username: "principal",
             password: passwordHash,
@@ -257,7 +255,6 @@ async function seed() {
             isActive: true
         });
         
-        // Teachers
         await storage.createUser({
             username: "teacher1",
             password: passwordHash,
@@ -276,37 +273,10 @@ async function seed() {
             isActive: true
         });
 
-        // Classes
-  app.get("/api/classes", async (req, res) => {
-    const classes = await storage.getAllClasses();
-    res.json(classes);
-  });
-
-  app.post("/api/classes", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
-    const newClass = await storage.createClass(req.body);
-    res.json(newClass);
-  });
-
-  app.delete("/api/classes/:id", async (req, res) => {
-    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
-    // Implementation for deletion if needed, but storage doesn't have it yet.
-    // Let's at least acknowledge the endpoint for the UI.
-    res.sendStatus(200);
-  });
-
-  // Subjects
         await storage.createSubject({ name: "Mathematics", code: "MATH101" });
         await storage.createSubject({ name: "Physics", code: "PHYS101" });
         await storage.createSubject({ name: "Chemistry", code: "CHEM101" });
         await storage.createSubject({ name: "English", code: "ENG101" });
         await storage.createSubject({ name: "Computer Science", code: "CS101" });
-
-        // Students (Sample)
-        await storage.createStudent({ name: "Student A", studentId: "S001", classProgram: "AET", section: 1 });
-        await storage.createStudent({ name: "Student B", studentId: "S002", classProgram: "AMT", section: 1 });
-        
-        // Settings
-        // db.insert(settings)... (if we had a createSettings method)
     }
 }
