@@ -10,6 +10,8 @@ import LoginPage from "@/pages/LoginPage";
 import Dashboard from "@/pages/Dashboard";
 import SchedulePage from "@/pages/SchedulePage";
 import MyExamsPage from "@/pages/MyExamsPage";
+import ManageStaff from "@/pages/ManageStaff";
+import ManageSubjects from "@/pages/ManageSubjects";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -41,8 +43,8 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/schedule" component={SchedulePage} />
       <Route path="/my-exams" component={MyExamsPage} />
-      <Route path="/admin/users" component={Dashboard} /> 
-      <Route path="/admin/subjects" component={Dashboard} />
+      <Route path="/admin/users" component={ManageStaff} /> 
+      <Route path="/admin/subjects" component={ManageSubjects} />
       <Route component={NotFound} />
     </Switch>
   );
