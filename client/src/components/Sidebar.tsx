@@ -97,6 +97,16 @@ export function Sidebar() {
               <BookOpen className="w-4 h-4" />
               Manage Subjects
             </Link>
+
+            <Link href="/admin/classes" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive("/admin/classes") 
+                ? "bg-primary/10 text-primary shadow-sm" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}>
+              <GraduationCap className="w-4 h-4" />
+              Manage Classes
+            </Link>
           </>
         )}
       </nav>

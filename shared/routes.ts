@@ -50,12 +50,11 @@ export const api = {
       path: "/api/exams",
       input: z.object({
         weekStart: z.string().optional(), // ISO date string
-        classProgram: z.string().optional(),
-        section: z.coerce.number().optional(),
+        classId: z.coerce.number().optional(),
         teacherId: z.coerce.number().optional(),
       }).optional(),
       responses: {
-        200: z.array(z.custom<typeof examEvents.$inferSelect & { subject: typeof subjects.$inferSelect, creator: typeof users.$inferSelect }>()),
+        200: z.array(z.any()),
       },
     },
     create: {
@@ -79,6 +78,23 @@ export const api = {
         200: z.custom<typeof examEvents.$inferSelect>(),
         400: z.object({ message: z.string() }),
         404: errorSchemas.notFound,
+      },
+    },
+  },
+  classes: {
+    list: {
+      method: "GET" as const,
+      path: "/api/classes",
+      responses: {
+        200: z.array(z.any()),
+      },
+    },
+    create: {
+      method: "POST" as const,
+      path: "/api/classes",
+      input: z.object({ name: z.string() }),
+      responses: {
+        201: z.any(),
       },
     },
   },

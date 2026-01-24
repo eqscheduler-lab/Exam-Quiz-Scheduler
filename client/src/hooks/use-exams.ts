@@ -4,8 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type ExamFilters = {
   weekStart?: string;
-  classProgram?: string;
-  section?: number;
+  classId?: number;
   teacherId?: number;
 };
 
@@ -21,7 +20,7 @@ export function useExams(filters?: ExamFilters) {
       
       const res = await fetch(url, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch exams");
-      return api.exams.list.responses[200].parse(await res.json());
+      return res.json();
     },
   });
 }

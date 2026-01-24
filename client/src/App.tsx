@@ -12,6 +12,7 @@ import SchedulePage from "@/pages/SchedulePage";
 import MyExamsPage from "@/pages/MyExamsPage";
 import ManageStaff from "@/pages/ManageStaff";
 import ManageSubjects from "@/pages/ManageSubjects";
+import ManageClasses from "@/pages/ManageClasses";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/my-exams" component={MyExamsPage} />
       <Route path="/admin/users" component={ManageStaff} /> 
       <Route path="/admin/subjects" component={ManageSubjects} />
+      <Route path="/admin/classes" component={ManageClasses} />
       <Route component={NotFound} />
     </Switch>
   );

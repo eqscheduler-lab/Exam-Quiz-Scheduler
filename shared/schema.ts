@@ -19,6 +19,11 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true).notNull(),
 });
 
+export const classes = pgTable("classes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(), // e.g. "A10 [AMT]/1"
+});
+
 export const subjects = pgTable("subjects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -29,8 +34,7 @@ export const students = pgTable("students", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   studentId: text("student_id").notNull().unique(),
-  classProgram: text("class_program", { enum: classPrograms }).notNull(),
-  section: integer("section").notNull(),
+  classId: integer("class_id").references(() => classes.id).notNull(),
 });
 
 export const examEvents = pgTable("exam_events", {
@@ -39,8 +43,7 @@ export const examEvents = pgTable("exam_events", {
   type: text("type", { enum: examTypes }).notNull(),
   date: timestamp("date").notNull(),
   period: integer("period").notNull(),
-  classProgram: text("class_program", { enum: classPrograms }).notNull(),
-  section: integer("section").notNull(),
+  classId: integer("class_id").references(() => classes.id).notNull(),
   subjectId: integer("subject_id").references(() => subjects.id).notNull(),
   createdByUserId: integer("created_by_user_id").references(() => users.id).notNull(),
   status: text("status", { enum: examStatuses }).notNull().default("SCHEDULED"),
@@ -57,6 +60,7 @@ export const settings = pgTable("settings", {
 
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export const insertClassSchema = createInsertSchema(classes).omit({ id: true });
 export const insertSubjectSchema = createInsertSchema(subjects).omit({ id: true });
 export const insertStudentSchema = createInsertSchema(students).omit({ id: true });
 export const insertExamEventSchema = createInsertSchema(examEvents).omit({ id: true, createdAt: true });
@@ -65,6 +69,8 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({ id: true
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Class = typeof classes.$inferSelect;
+export type InsertClass = z.infer<typeof insertClassSchema>;
 export type Subject = typeof subjects.$inferSelect;
 export type Student = typeof students.$inferSelect;
 export type ExamEvent = typeof examEvents.$inferSelect;

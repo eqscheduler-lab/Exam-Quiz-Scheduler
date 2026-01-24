@@ -39,13 +39,14 @@ import { cn } from "@/lib/utils";
 import { useCreateExam, useUpdateExam, useExams } from "@/hooks/use-exams";
 import { useSubjects } from "@/hooks/use-subjects";
 import { useAuth } from "@/hooks/use-auth";
-import { examTypes, classPrograms, insertExamEventSchema } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { examTypes, insertExamEventSchema, type Class } from "@shared/schema";
 
 // Form Schema
 const formSchema = insertExamEventSchema.extend({
   date: z.date({ required_error: "A date is required." }),
   period: z.coerce.number().min(1).max(8),
-  section: z.coerce.number().min(1),
+  classId: z.coerce.number().min(1),
   subjectId: z.coerce.number(),
 });
 
@@ -55,8 +56,6 @@ interface ExamDialogProps {
   trigger?: React.ReactNode;
   initialDate?: Date;
   initialPeriod?: number;
-  initialClassProgram?: string;
-  initialSection?: number;
   mode?: "create" | "edit";
   examId?: number;
   defaultValues?: Partial<ExamFormValues>;
@@ -75,6 +74,7 @@ export function ExamDialog({
   const createExam = useCreateExam();
   const updateExam = useUpdateExam();
   const { data: subjects } = useSubjects();
+  const { data: classes } = useQuery<Class[]>({ queryKey: ["/api/classes"] });
   
   // Fetch existing exams for the selected date to check limits (client-side pre-check)
   const { data: existingExams } = useExams(
@@ -88,8 +88,7 @@ export function ExamDialog({
       type: defaultValues?.type || "EXAM",
       date: initialDate || defaultValues?.date || new Date(),
       period: initialPeriod || defaultValues?.period || 1,
-      classProgram: (defaultValues?.classProgram as any) || "AET",
-      section: defaultValues?.section || 1,
+      classId: defaultValues?.classId || undefined,
       subjectId: defaultValues?.subjectId || undefined,
       status: "SCHEDULED",
       notes: defaultValues?.notes || "",
@@ -203,44 +202,33 @@ export function ExamDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="classProgram"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Program</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Program" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {classPrograms.map((prog) => (
-                          <SelectItem key={prog} value={prog}>{prog}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="section"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Section</FormLabel>
+            <FormField
+              control={form.control}
+              name="classId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Class</FormLabel>
+                  <Select 
+                    onValueChange={(val) => field.onChange(Number(val))} 
+                    value={field.value?.toString()}
+                  >
                     <FormControl>
-                      <Input type="number" min={1} {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select class (e.g. A10 [AMT]/1)" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    <SelectContent>
+                      {classes?.map((cls) => (
+                        <SelectItem key={cls.id} value={cls.id.toString()}>
+                          {cls.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

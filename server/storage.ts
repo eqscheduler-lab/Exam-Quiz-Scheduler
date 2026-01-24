@@ -1,7 +1,7 @@
 import { db } from "./db";
 import {
-  users, subjects, students, examEvents, settings,
-  type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent
+  users, subjects, students, examEvents, settings, classes,
+  type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class
 } from "@shared/schema";
 import { eq, and, count, gte, lte } from "drizzle-orm";
 
@@ -11,6 +11,10 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
+
+  // Classes
+  getAllClasses(): Promise<Class[]>;
+  createClass(classData: typeof classes.$inferInsert): Promise<Class>;
 
   // Subjects
   getAllSubjects(): Promise<Subject[]>;
@@ -24,14 +28,13 @@ export interface IStorage {
   getExams(filters?: { 
     weekStart?: Date, 
     weekEnd?: Date, 
-    classProgram?: string, 
-    section?: number,
+    classId?: number, 
     teacherId?: number 
-  }): Promise<(ExamEvent & { subject: Subject, creator: User })[]>;
+  }): Promise<(ExamEvent & { subject: Subject, creator: User, class: Class })[]>;
   
   createExam(exam: InsertExamEvent): Promise<ExamEvent>;
   updateExam(id: number, exam: Partial<InsertExamEvent>): Promise<ExamEvent>;
-  getExamCountForClassDay(date: Date, classProgram: string, section: number): Promise<number>;
+  getExamCountForClassDay(date: Date, classId: number): Promise<number>;
   
   // Settings
   getSettings(): Promise<typeof settings.$inferSelect | undefined>;
@@ -57,6 +60,15 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users);
   }
 
+  async getAllClasses(): Promise<Class[]> {
+    return await db.select().from(classes);
+  }
+
+  async createClass(classData: typeof classes.$inferInsert): Promise<Class> {
+    const [newClass] = await db.insert(classes).values(classData).returning();
+    return newClass;
+  }
+
   async getAllSubjects(): Promise<Subject[]> {
     return await db.select().from(subjects);
   }
@@ -78,30 +90,34 @@ export class DatabaseStorage implements IStorage {
   async getExams(filters?: { 
     weekStart?: Date, 
     weekEnd?: Date, 
-    classProgram?: string, 
-    section?: number,
+    classId?: number, 
     teacherId?: number 
-  }): Promise<(ExamEvent & { subject: Subject, creator: User })[]> {
+  }): Promise<(ExamEvent & { subject: Subject, creator: User, class: Class })[]> {
     const conditions = [];
     if (filters?.weekStart && filters?.weekEnd) {
       conditions.push(and(gte(examEvents.date, filters.weekStart), lte(examEvents.date, filters.weekEnd)));
     }
-    if (filters?.classProgram) {
-      conditions.push(eq(examEvents.classProgram, filters.classProgram));
-    }
-    if (filters?.section) {
-      conditions.push(eq(examEvents.section, filters.section));
+    if (filters?.classId) {
+      conditions.push(eq(examEvents.classId, filters.classId));
     }
     if (filters?.teacherId) {
       conditions.push(eq(examEvents.createdByUserId, filters.teacherId));
     }
 
-    return await db.select()
+    const results = await db.select()
     .from(examEvents)
     .innerJoin(subjects, eq(examEvents.subjectId, subjects.id))
     .innerJoin(users, eq(examEvents.createdByUserId, users.id))
+    .innerJoin(classes, eq(examEvents.classId, classes.id))
     .where(and(...conditions))
     .orderBy(examEvents.date, examEvents.period);
+
+    return results.map(r => ({
+      ...r.exam_events,
+      subject: r.subjects,
+      creator: r.users,
+      class: r.classes
+    }));
   }
 
   async createExam(exam: InsertExamEvent): Promise<ExamEvent> {
@@ -114,11 +130,7 @@ export class DatabaseStorage implements IStorage {
     return updatedExam;
   }
 
-  async getExamCountForClassDay(date: Date, classProgram: string, section: number): Promise<number> {
-    // Count exams for this class + section on this specific date
-    // Note: 'date' in DB is timestamp, we should compare by day.
-    // For simplicity assuming the date passed is start of day or we use a range.
-    // Ideally we cast to date.
+  async getExamCountForClassDay(date: Date, classId: number): Promise<number> {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
@@ -129,8 +141,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         gte(examEvents.date, startOfDay),
         lte(examEvents.date, endOfDay),
-        eq(examEvents.classProgram, classProgram),
-        eq(examEvents.section, section),
+        eq(examEvents.classId, classId),
         eq(examEvents.status, "SCHEDULED")
       ));
     
