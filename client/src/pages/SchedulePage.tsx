@@ -159,28 +159,30 @@ export default function SchedulePage() {
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <div className="min-w-[1000px]">
-              <div className="grid grid-cols-[100px_repeat(5,1fr)] bg-muted/50 border-b border-border">
-                <div className="p-4 font-semibold text-sm text-muted-foreground border-r border-border flex items-center justify-center text-center">
-                  Period
+              {/* Header Row: Periods */}
+              <div className="grid grid-cols-[150px_repeat(8,1fr)] bg-muted/50 border-b border-border">
+                <div className="p-4 font-semibold text-sm text-muted-foreground border-r border-border flex items-center justify-center text-center leading-tight">
+                  Day / Period
                 </div>
-                {DAYS.map((day, i) => (
-                  <div key={day} className="p-4 text-center border-r border-border last:border-r-0">
-                    <div className="font-bold text-foreground">{day}</div>
-                    <div className="text-xs text-muted-foreground">{format(getDateForDay(weekStart, i), "MMM d")}</div>
+                {PERIODS.map((period) => (
+                  <div key={period} className="p-4 text-center border-r border-border last:border-r-0 flex flex-col items-center justify-center">
+                    <div className="font-bold text-foreground">P{period}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {period === 1 ? '08:00' : period === 2 ? '08:50' : period === 3 ? '09:40' : period === 4 ? '10:30' : period === 5 ? '11:20' : period === 6 ? '12:10' : period === 7 ? '13:00' : '13:50'}
+                    </div>
                   </div>
                 ))}
               </div>
 
+              {/* Body: Days */}
               <div className="divide-y divide-border">
-                {PERIODS.map((period) => (
-                  <div key={period} className="grid grid-cols-[100px_repeat(5,1fr)]">
+                {DAYS.map((day, i) => (
+                  <div key={day} className="grid grid-cols-[150px_repeat(8,1fr)]">
                     <div className="p-4 border-r border-border flex flex-col items-center justify-center bg-muted/10">
-                      <span className="font-bold text-lg text-foreground/80">{period}</span>
-                      <span className="text-[10px] text-muted-foreground mt-1">
-                        {period === 1 ? '08:00' : period === 2 ? '08:50' : period === 3 ? '09:40' : period === 4 ? '10:30' : period === 5 ? '11:20' : period === 6 ? '12:10' : period === 7 ? '13:00' : '13:50'}
-                      </span>
+                      <span className="font-bold text-foreground">{day}</span>
+                      <span className="text-xs text-muted-foreground">{format(getDateForDay(weekStart, i), "MMM d")}</span>
                     </div>
-                    {DAYS.map((day) => (
+                    {PERIODS.map((period) => (
                       <div key={`${day}-${period}`} className="border-r border-border last:border-r-0 min-h-[120px]">
                         {renderCell(day, period)}
                       </div>
