@@ -5,17 +5,77 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, UserPlus, Mail, Shield, Trash2 } from "lucide-react";
+import { Plus, UserPlus, Mail, Shield, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@shared/routes";
-import { type User } from "@shared/schema";
+import { type User, userRoles } from "@shared/schema";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertUserSchema } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function ManageStaff() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isOpen, setIsOpen] = useState(false);
 
   const { data: staff, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const form = useForm({
+    resolver: zodResolver(insertUserSchema),
+    defaultValues: {
+      username: "",
+      name: "",
+      email: "",
+      role: "TEACHER",
+      isActive: true,
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/admin/users", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Success", description: "Staff member added. Default password: Staff123" });
+      setIsOpen(false);
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to add staff member", 
+        variant: "destructive" 
+      });
+    },
   });
 
   return (
@@ -26,10 +86,92 @@ export default function ManageStaff() {
             <h2 className="text-xl font-bold font-display">Manage School Staff</h2>
             <p className="text-muted-foreground text-sm">Create and manage accounts for teachers and administrators</p>
           </div>
-          <Button className="gap-2">
-            <UserPlus className="w-4 h-4" />
-            Add Staff Member
-          </Button>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <UserPlus className="w-4 h-4" />
+                Add Staff Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New Staff Member</DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <Input placeholder="jdoe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="john@school.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {userRoles.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter className="pt-4">
+                    <Button type="submit" disabled={createMutation.isPending} className="w-full">
+                      {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Add Staff Member
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Card>
