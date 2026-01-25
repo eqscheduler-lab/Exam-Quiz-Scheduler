@@ -51,7 +51,7 @@ export default function SchedulePage() {
     const params = new URLSearchParams({
         weekStart: weekStart.toISOString(),
     });
-    if (selectedClassId !== "all") {
+    if (selectedClassId && selectedClassId !== "all") {
       params.append("classId", selectedClassId);
     }
     window.open(`${api.schedule.pdf.path}?${params.toString()}`, '_blank');

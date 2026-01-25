@@ -179,6 +179,9 @@ export async function registerRoutes(
              doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
                 .text(`Class: ${cls.name}`, { align: 'center' });
            }
+         } else {
+           doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
+              .text(`Whole School Schedule`, { align: 'center' });
          }
          doc.moveDown(1);
 
