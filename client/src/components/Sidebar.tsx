@@ -6,15 +6,50 @@ import {
   Users, 
   LayoutDashboard, 
   LogOut, 
-  GraduationCap 
+  GraduationCap,
+  Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({ current: "", new: "", confirm: "" });
   
   if (!user) return null;
+
+  const handleChangePassword = async () => {
+    if (passwordData.new !== passwordData.confirm) {
+      return toast({ title: "Passwords do not match", variant: "destructive" });
+    }
+    try {
+      await apiRequest("POST", "/api/user/change-password", {
+        currentPassword: passwordData.current,
+        newPassword: passwordData.new
+      });
+      toast({ title: "Password changed successfully" });
+      setIsChangingPassword(false);
+      setPasswordData({ current: "", new: "", confirm: "" });
+    } catch (error: any) {
+      toast({ title: "Failed to change password", description: error.message, variant: "destructive" });
+    }
+  };
 
   const isActive = (path: string) => location === path;
 
@@ -121,6 +156,49 @@ export function Sidebar() {
             <p className="text-xs text-muted-foreground truncate capitalize">{user.role.toLowerCase()}</p>
           </div>
         </div>
+        <Dialog open={isChangingPassword} onOpenChange={setIsChangingPassword}>
+          <DialogTrigger asChild>
+            <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mb-1">
+              <Lock className="w-4 h-4" />
+              Change Password
+            </button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Password</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Current Password</Label>
+                <Input 
+                  type="password" 
+                  value={passwordData.current} 
+                  onChange={e => setPasswordData(d => ({ ...d, current: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>New Password</Label>
+                <Input 
+                  type="password" 
+                  value={passwordData.new} 
+                  onChange={e => setPasswordData(d => ({ ...d, new: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Confirm New Password</Label>
+                <Input 
+                  type="password" 
+                  value={passwordData.confirm} 
+                  onChange={e => setPasswordData(d => ({ ...d, confirm: e.target.value }))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleChangePassword}>Update Password</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <button
           onClick={() => logout()}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"

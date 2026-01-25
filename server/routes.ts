@@ -7,7 +7,7 @@ import { z } from "zod";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
-import { BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes } from "@shared/schema";
+import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -123,6 +123,31 @@ export async function registerRoutes(
   });
 
   // === USERS/STUDENTS ===
+  app.post("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const data = insertUserSchema.parse(req.body);
+      const hashedPassword = await bcrypt.hash("Staff123", 10);
+      const user = await storage.createUser({ ...data, password: hashedPassword });
+      res.status(201).json(user);
+    } catch (error) {
+      res.status(400).json(error);
+    }
+  });
+
+  app.post("/api/user/change-password", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).send("Current and new password are required");
+    const user = await storage.getUser(req.user!.id);
+    if (!user) return res.sendStatus(404);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(400).send("Incorrect current password");
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await storage.updateUser(user.id, { password: hashedPassword });
+    res.sendStatus(200);
+  });
+
   app.get(api.users.list.path, async (req, res) => {
      if (!req.isAuthenticated()) return res.sendStatus(401);
      const usersList = await storage.getAllUsers();
