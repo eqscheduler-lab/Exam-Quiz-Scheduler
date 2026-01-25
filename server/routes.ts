@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { api } from "@shared/routes";
 import { z } from "zod";
+// @ts-ignore
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
@@ -139,12 +140,13 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).send("Current and new password are required");
-    const user = await storage.getUser(req.user!.id);
-    if (!user) return res.sendStatus(404);
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    const user = req.user as any;
+    const dbUser = await storage.getUser(user.id);
+    if (!dbUser) return res.sendStatus(404);
+    const isMatch = await bcrypt.compare(currentPassword, dbUser.password);
     if (!isMatch) return res.status(400).send("Incorrect current password");
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await storage.updateUser(user.id, { password: hashedPassword });
+    await storage.updateUser(dbUser.id, { password: hashedPassword });
     res.sendStatus(200);
   });
 
