@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExamDialog } from "@/components/ExamDialog";
-import { classPrograms } from "@shared/schema";
+import { type Class } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -26,59 +26,48 @@ const DAYS: DayName[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 const PERIODS: Period[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
 // --- Helpers ---
-// Map Day Index (1=Mon) to Date object for current week
 function getDateForDay(startOfWeekDate: Date, dayIndex: number): Date {
-  // startOfWeek returns Sunday. Monday is +1
   return addDays(startOfWeekDate, dayIndex);
 }
 
 export default function SchedulePage() {
   const { user } = useAuth();
   
-  // State for Week Navigation
   const [currentDate, setCurrentDate] = useState(new Date());
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
-  // State for Filters
-  const [selectedProgram, setSelectedProgram] = useState<string>("AET");
-  const [selectedSection, setSelectedSection] = useState<string>("1");
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
 
-  // Fetch Exams
-  const { data: exams, isLoading } = useExams({
-    weekStart: weekStart.toISOString(),
-    classProgram: selectedProgram,
-    section: Number(selectedSection),
+  const { data: classes } = useQuery<Class[]>({
+    queryKey: ["/api/classes"],
   });
 
-  // Export PDF
+  const { data: exams, isLoading } = useExams({
+    weekStart: weekStart.toISOString(),
+    classId: selectedClassId !== "all" ? Number(selectedClassId) : undefined,
+  });
+
   const handleExportPDF = async () => {
-    // This would typically trigger a download
-    // For now we just link to the API endpoint
     const params = new URLSearchParams({
         weekStart: weekStart.toISOString(),
-        classProgram: selectedProgram,
-        section: selectedSection
     });
+    if (selectedClassId !== "all") {
+      params.append("classId", selectedClassId);
+    }
     window.open(`${api.schedule.pdf.path}?${params.toString()}`, '_blank');
   };
 
   const nextWeek = () => setCurrentDate(addDays(currentDate, 7));
   const prevWeek = () => setCurrentDate(addDays(currentDate, -7));
 
-  // --- Render Cell ---
   const renderCell = (day: DayName, period: Period) => {
-    // Find exam for this slot
-    // Calculate date for this column
-    const dayIndex = DAYS.indexOf(day) + 1; // 1=Mon
-    const cellDate = getDateForDay(weekStart, dayIndex - 1); // 0 offset from monday
+    const dayIndex = DAYS.indexOf(day) + 1;
+    const cellDate = getDateForDay(weekStart, dayIndex - 1);
     
-    // Friday only has 4 periods usually, but schema allows 8. Let's assume full grid for simplicity or restrict UI.
-    // Requirement said 1-4 for Fri.
     if (day === "Friday" && period > 4) {
       return <div className="bg-slate-50 dark:bg-slate-900/50 h-full w-full diagonal-stripe" />;
     }
 
-    // Find exams on this day & period
     const cellExams = exams?.filter(e => {
       const d = new Date(e.date);
       return d.getDate() === cellDate.getDate() && 
@@ -87,7 +76,6 @@ export default function SchedulePage() {
     });
 
     const hasExam = cellExams && cellExams.length > 0;
-    const isFull = cellExams && cellExams.length >= 3; // Though constraint is per day, usually 1 per slot
 
     return (
       <div className="h-full min-h-[100px] p-1 relative group">
@@ -107,22 +95,18 @@ export default function SchedulePage() {
                       : "bg-amber-100 border-amber-200 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-100"
                   )}>
                     <div className="font-bold truncate">{exam.subject.code}</div>
+                    <div className="truncate opacity-80">{exam.class.name}</div>
                     <div className="truncate opacity-80">{exam.type}</div>
                   </button>
                 }
               />
             ))}
-            {/* If slot is not logically full (e.g. multiple short quizzes?), allow adding more? 
-                Usually 1 exam per period. Let's assume 1 per period for UI simplicity unless data says otherwise. 
-            */}
           </div>
         ) : (
           <div className="h-full w-full opacity-0 group-hover:opacity-100 transition-opacity">
              <ExamDialog 
                initialDate={cellDate}
                initialPeriod={period}
-               initialClassProgram={selectedProgram}
-               initialSection={Number(selectedSection)}
                trigger={
                  <button className="w-full h-full border-2 border-dashed border-primary/20 rounded-lg flex items-center justify-center text-primary/40 hover:text-primary hover:bg-primary/5 hover:border-primary transition-all">
                    <span className="text-sm font-medium">+ Add</span>
@@ -138,7 +122,6 @@ export default function SchedulePage() {
   return (
     <Layout title="Master Schedule">
       <div className="flex flex-col space-y-6">
-        {/* Controls */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={prevWeek}>
@@ -155,22 +138,13 @@ export default function SchedulePage() {
           <div className="flex items-center gap-3 w-full md:w-auto">
              <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg border border-border">
                <Filter className="w-4 h-4 text-muted-foreground" />
-               <Select value={selectedProgram} onValueChange={setSelectedProgram}>
-                 <SelectTrigger className="w-[100px] h-8 border-none bg-transparent focus:ring-0">
-                   <SelectValue />
+               <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                 <SelectTrigger className="w-[180px] h-8 border-none bg-transparent focus:ring-0">
+                   <SelectValue placeholder="All Classes" />
                  </SelectTrigger>
                  <SelectContent>
-                   {classPrograms.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                 </SelectContent>
-               </Select>
-               <div className="w-px h-4 bg-border mx-1" />
-               <span className="text-sm text-muted-foreground whitespace-nowrap">Sec</span>
-               <Select value={selectedSection} onValueChange={setSelectedSection}>
-                 <SelectTrigger className="w-[70px] h-8 border-none bg-transparent focus:ring-0">
-                   <SelectValue />
-                 </SelectTrigger>
-                 <SelectContent>
-                   {[1,2,3,4,5].map(s => <SelectItem key={s} value={s.toString()}>{s}</SelectItem>)}
+                   <SelectItem value="all">All Classes</SelectItem>
+                   {classes?.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                  </SelectContent>
                </Select>
              </div>
@@ -182,13 +156,11 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        {/* Grid */}
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <div className="min-w-[1000px]">
-              {/* Header Row */}
               <div className="grid grid-cols-[100px_repeat(5,1fr)] bg-muted/50 border-b border-border">
-                <div className="p-4 font-semibold text-sm text-muted-foreground border-r border-border flex items-center justify-center">
+                <div className="p-4 font-semibold text-sm text-muted-foreground border-r border-border flex items-center justify-center text-center">
                   Period
                 </div>
                 {DAYS.map((day, i) => (
@@ -199,15 +171,13 @@ export default function SchedulePage() {
                 ))}
               </div>
 
-              {/* Body */}
               <div className="divide-y divide-border">
                 {PERIODS.map((period) => (
                   <div key={period} className="grid grid-cols-[100px_repeat(5,1fr)]">
                     <div className="p-4 border-r border-border flex flex-col items-center justify-center bg-muted/10">
                       <span className="font-bold text-lg text-foreground/80">{period}</span>
-                      {/* Placeholder time - logic for real time would go here */}
                       <span className="text-[10px] text-muted-foreground mt-1">
-                        {period === 1 ? '08:00' : period === 2 ? '08:50' : '...'}
+                        {period === 1 ? '08:00' : period === 2 ? '08:50' : period === 3 ? '09:40' : period === 4 ? '10:30' : period === 5 ? '11:20' : period === 6 ? '12:10' : period === 7 ? '13:00' : '13:50'}
                       </span>
                     </div>
                     {DAYS.map((day) => (

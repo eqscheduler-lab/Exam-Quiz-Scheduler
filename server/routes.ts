@@ -142,73 +142,117 @@ export async function registerRoutes(
          
          const exams = await storage.getExams({ weekStart, weekEnd, classId });
          
-         const doc = new PDFDocument({ layout: 'landscape', size: 'A4' });
+         const doc = new PDFDocument({ 
+           layout: 'landscape', 
+           size: 'A4',
+           margins: { top: 30, left: 30, right: 30, bottom: 30 }
+         });
+         
          res.setHeader('Content-Type', 'application/pdf');
          res.setHeader('Content-Disposition', 'attachment; filename=schedule.pdf');
          doc.pipe(res);
 
+         // Helper for colors (modern palette)
+         const colors = {
+           primary: '#0f172a',
+           secondary: '#64748b',
+           border: '#e2e8f0',
+           examBg: '#f5f3ff',
+           examBorder: '#c4b5fd',
+           examText: '#5b21b6',
+           quizBg: '#fffbeb',
+           quizBorder: '#fcd34d',
+           quizText: '#92400e',
+           mutedBg: '#f8fafc'
+         };
+
          // Header
-         doc.fontSize(20).text('Exam & Quiz Schedule', { align: 'center' });
-         doc.fontSize(12).text(`Week of ${format(weekStart, 'MMM d, yyyy')} - ${format(weekEnd, 'MMM d, yyyy')}`, { align: 'center' });
-         doc.moveDown();
+         doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
+            .text('Exam & Quiz Schedule', { align: 'center' });
+         doc.fontSize(12).fillColor(colors.secondary)
+            .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
+         
+         if (classId) {
+           const allClass = await storage.getAllClasses();
+           const cls = allClass.find(c => c.id === classId);
+           if (cls) {
+             doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
+                .text(`Class: ${cls.name}`, { align: 'center' });
+           }
+         }
+         doc.moveDown(1);
 
          // Grid Configuration
-         const startX = 50;
-         const startY = 120;
-         const cellWidth = 90;
-         const cellHeight = 80;
-         const periods = 8;
-         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+         const startX = 40;
+         const startY = 130;
+         const tableWidth = doc.page.width - 80;
+         const periodColWidth = 60;
+         const dayColWidth = (tableWidth - periodColWidth) / 5;
+         const cellHeight = 55;
+         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+         const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
          
-         // Draw Header Row (Periods)
-         doc.font('Helvetica-Bold');
-         for (let p = 1; p <= periods; p++) {
-             doc.text(`Period ${p}`, startX + 50 + (p-1) * cellWidth, startY - 20, { width: cellWidth, align: 'center' });
-         }
-         
-         // Draw Rows (Days) & Grid
-         doc.font('Helvetica');
-         days.forEach((day, i) => {
-             const y = startY + i * cellHeight;
-             doc.font('Helvetica-Bold').text(day, startX, y + cellHeight/2 - 5);
-             
-             // Draw horizontal line
-             doc.moveTo(startX, y).lineTo(startX + 50 + periods * cellWidth, y).stroke();
-             
-             // Draw cells
-             for (let p = 1; p <= periods; p++) {
-                 const x = startX + 50 + (p-1) * cellWidth;
-                 if (day === 'Fri' && p > 4) {
-                     doc.rect(x, y, cellWidth, cellHeight).fill('#f0f0f0');
-                     doc.fillColor('black'); // Reset
-                     continue;
-                 }
-                 
-                 const date = addDays(weekStart, i);
-                 const dayExams = exams.filter(e => {
-                     const eDate = new Date(e.date);
-                     return eDate.getDate() === date.getDate() && 
-                            eDate.getMonth() === date.getMonth() &&
-                            e.period === p;
-                 });
-                 
-                 if (dayExams.length > 0) {
-                     doc.fontSize(8);
-                     let textY = y + 5;
-                     dayExams.forEach(e => {
-                         doc.font('Helvetica-Bold').text(e.class.name, x + 2, textY, { width: cellWidth - 4 });
-                         doc.font('Helvetica').text(e.subject.code, x + 2, textY + 10, { width: cellWidth - 4 });
-                         doc.text(e.type, x + 2, textY + 20, { width: cellWidth - 4 });
-                         textY += 35;
-                     });
-                 }
-                 
-                 doc.moveTo(x, y).lineTo(x, y + cellHeight).stroke();
-             }
-             doc.moveTo(startX + 50 + periods * cellWidth, y).lineTo(startX + 50 + periods * cellWidth, y + cellHeight).stroke();
+         // Draw Header (Days)
+         doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary);
+         shortDays.forEach((day, i) => {
+           const x = startX + periodColWidth + (i * dayColWidth);
+           doc.text(day.toUpperCase(), x, startY - 20, { width: dayColWidth, align: 'center' });
+           const dateStr = format(addDays(weekStart, i), 'MMM d');
+           doc.font('Helvetica').fontSize(8).fillColor(colors.secondary)
+              .text(dateStr, x, startY - 10, { width: dayColWidth, align: 'center' });
          });
-         
-         doc.moveTo(startX, startY + days.length * cellHeight).lineTo(startX + 50 + periods * cellWidth, startY + days.length * cellHeight).stroke();
+
+         // Draw Grid and Content
+         for (let p = 1; p <= 8; p++) {
+           const y = startY + (p - 1) * cellHeight;
+           
+           // Period Label
+           doc.font('Helvetica-Bold').fontSize(12).fillColor(colors.primary)
+              .text(`${p}`, startX, y + cellHeight/2 - 12, { width: periodColWidth, align: 'center' });
+           doc.font('Helvetica').fontSize(7).fillColor(colors.secondary)
+              .text('PERIOD', startX, y + cellHeight/2 + 2, { width: periodColWidth, align: 'center' });
+
+           days.forEach((day, i) => {
+             const x = startX + periodColWidth + (i * dayColWidth);
+             
+             // Draw Cell Border
+             doc.rect(x, y, dayColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
+             
+             // Friday restriction
+             if (day === 'Friday' && p > 4) {
+               doc.rect(x + 0.5, y + 0.5, dayColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
+               return;
+             }
+
+             const date = addDays(weekStart, i);
+             const dayExams = exams.filter(e => {
+               const eDate = new Date(e.date);
+               return eDate.getDate() === date.getDate() && 
+                      eDate.getMonth() === date.getMonth() &&
+                      e.period === p;
+             });
+
+             if (dayExams.length > 0) {
+               dayExams.forEach((e, idx) => {
+                 const isExam = e.type === 'EXAM';
+                 const margin = 3;
+                 const boxHeight = (cellHeight - (margin * 2));
+                 
+                 // Rounded box for exam
+                 doc.roundedRect(x + margin, y + margin, dayColWidth - (margin * 2), boxHeight, 4)
+                    .fillAndStroke(isExam ? colors.examBg : colors.quizBg, isExam ? colors.examBorder : colors.quizBorder);
+                 
+                 doc.fontSize(8).font('Helvetica-Bold').fillColor(isExam ? colors.examText : colors.quizText)
+                    .text(e.subject.code, x + margin + 4, y + margin + 6, { width: dayColWidth - 14 });
+                 
+                 doc.fontSize(7).font('Helvetica').fillColor(isExam ? colors.examText : colors.quizText)
+                    .text(`${e.class.name} • ${e.type}`, x + margin + 4, y + margin + 18, { width: dayColWidth - 14 });
+                 
+                 doc.fontSize(6).text(`Prof: ${e.creator.name}`, x + margin + 4, y + margin + 30, { width: dayColWidth - 14 });
+               });
+             }
+           });
+         }
 
          doc.end();
      } catch (err) {

@@ -56,6 +56,7 @@ interface ExamDialogProps {
   trigger?: React.ReactNode;
   initialDate?: Date;
   initialPeriod?: number;
+  initialClassId?: number;
   mode?: "create" | "edit";
   examId?: number;
   defaultValues?: Partial<ExamFormValues>;
@@ -65,6 +66,7 @@ export function ExamDialog({
   trigger, 
   initialDate, 
   initialPeriod, 
+  initialClassId,
   mode = "create",
   examId,
   defaultValues
@@ -88,7 +90,7 @@ export function ExamDialog({
       type: defaultValues?.type || "EXAM",
       date: initialDate || defaultValues?.date || new Date(),
       period: initialPeriod || defaultValues?.period || 1,
-      classId: defaultValues?.classId || undefined,
+      classId: initialClassId || defaultValues?.classId || undefined,
       subjectId: defaultValues?.subjectId || undefined,
       status: "SCHEDULED",
       notes: defaultValues?.notes || "",

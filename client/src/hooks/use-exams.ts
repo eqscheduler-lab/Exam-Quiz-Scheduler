@@ -14,8 +14,17 @@ export function useExams(filters?: ExamFilters) {
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const url = filters 
-        ? `${api.exams.list.path}?${new URLSearchParams(Object.entries(filters).filter(([_, v]) => v !== undefined).map(([k, v]) => [k, String(v)]))}`
+      const searchParams = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([k, v]) => {
+          if (v !== undefined) {
+            searchParams.append(k, String(v));
+          }
+        });
+      }
+      
+      const url = searchParams.toString() 
+        ? `${api.exams.list.path}?${searchParams.toString()}`
         : api.exams.list.path;
       
       const res = await fetch(url, { credentials: "include" });
