@@ -7,7 +7,7 @@ import { z } from "zod";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
-import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes } from "@shared/schema";
+import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes } from "../shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
