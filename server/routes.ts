@@ -189,45 +189,44 @@ export async function registerRoutes(
          const startX = 40;
          const startY = 130;
          const tableWidth = doc.page.width - 80;
-         const periodColWidth = 60;
-         const dayColWidth = (tableWidth - periodColWidth) / 5;
-         const cellHeight = 55;
+         const dayColWidth = 100; // Fixed width for day labels
+         const periodColWidth = (tableWidth - dayColWidth) / 8;
+         const cellHeight = 70;
          const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
          const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
          
-         // Draw Header (Days)
+         // Draw Header (Periods)
          doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary);
-         shortDays.forEach((day, i) => {
-           const x = startX + periodColWidth + (i * dayColWidth);
-           doc.text(day.toUpperCase(), x, startY - 20, { width: dayColWidth, align: 'center' });
-           const dateStr = format(addDays(weekStart, i), 'MMM d');
-           doc.font('Helvetica').fontSize(8).fillColor(colors.secondary)
-              .text(dateStr, x, startY - 10, { width: dayColWidth, align: 'center' });
-         });
+         for (let p = 1; p <= 8; p++) {
+           const x = startX + dayColWidth + ((p - 1) * periodColWidth);
+           doc.text(`P${p}`, x, startY - 20, { width: periodColWidth, align: 'center' });
+           doc.font('Helvetica').fontSize(7).fillColor(colors.secondary)
+              .text('PERIOD', x, startY - 10, { width: periodColWidth, align: 'center' });
+         }
 
          // Draw Grid and Content
-         for (let p = 1; p <= 8; p++) {
-           const y = startY + (p - 1) * cellHeight;
+         days.forEach((day, i) => {
+           const y = startY + (i * cellHeight);
+           const date = addDays(weekStart, i);
            
-           // Period Label
-           doc.font('Helvetica-Bold').fontSize(12).fillColor(colors.primary)
-              .text(`${p}`, startX, y + cellHeight/2 - 12, { width: periodColWidth, align: 'center' });
-           doc.font('Helvetica').fontSize(7).fillColor(colors.secondary)
-              .text('PERIOD', startX, y + cellHeight/2 + 2, { width: periodColWidth, align: 'center' });
+           // Day Label
+           doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.primary)
+              .text(day.toUpperCase(), startX, y + cellHeight/2 - 10, { width: dayColWidth });
+           doc.font('Helvetica').fontSize(8).fillColor(colors.secondary)
+              .text(format(date, 'MMM d'), startX, y + cellHeight/2 + 2, { width: dayColWidth });
 
-           days.forEach((day, i) => {
-             const x = startX + periodColWidth + (i * dayColWidth);
+           for (let p = 1; p <= 8; p++) {
+             const x = startX + dayColWidth + ((p - 1) * periodColWidth);
              
              // Draw Cell Border
-             doc.rect(x, y, dayColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
+             doc.rect(x, y, periodColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
              
              // Friday restriction
              if (day === 'Friday' && p > 4) {
-               doc.rect(x + 0.5, y + 0.5, dayColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
-               return;
+               doc.rect(x + 0.5, y + 0.5, periodColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
+               continue;
              }
 
-             const date = addDays(weekStart, i);
              const dayExams = exams.filter(e => {
                const eDate = new Date(e.date);
                return eDate.getDate() === date.getDate() && 
@@ -236,26 +235,36 @@ export async function registerRoutes(
              });
 
              if (dayExams.length > 0) {
-               dayExams.forEach((e, idx) => {
+               dayExams.forEach((e) => {
                  const isExam = e.type === 'EXAM';
-                 const margin = 3;
-                 const boxHeight = (cellHeight - (margin * 2));
+                 const margin = 2;
+                 const boxHeight = cellHeight - (margin * 2);
+                 const boxWidth = periodColWidth - (margin * 2);
                  
                  // Rounded box for exam
-                 doc.roundedRect(x + margin, y + margin, dayColWidth - (margin * 2), boxHeight, 4)
+                 doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
                     .fillAndStroke(isExam ? colors.examBg : colors.quizBg, isExam ? colors.examBorder : colors.quizBorder);
                  
-                 doc.fontSize(8).font('Helvetica-Bold').fillColor(isExam ? colors.examText : colors.quizText)
-                    .text(e.subject.code, x + margin + 4, y + margin + 6, { width: dayColWidth - 14 });
+                 doc.fillColor(isExam ? colors.examText : colors.quizText);
                  
-                 doc.fontSize(7).font('Helvetica').fillColor(isExam ? colors.examText : colors.quizText)
-                    .text(`${e.class.name} • ${e.type}`, x + margin + 4, y + margin + 18, { width: dayColWidth - 14 });
+                 // Subject code
+                 doc.fontSize(7).font('Helvetica-Bold')
+                    .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
                  
-                 doc.fontSize(6).text(`Prof: ${e.creator.name}`, x + margin + 4, y + margin + 30, { width: dayColWidth - 14 });
+                 // Class name (condensed)
+                 doc.fontSize(6).font('Helvetica')
+                    .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
+                 
+                 // Type & Creator
+                 doc.fontSize(5)
+                    .text(e.type, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
+                 
+                 const creatorLastName = e.creator.name.split(' ').pop();
+                 doc.text(`Prof: ${creatorLastName}`, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
                });
              }
-           });
-         }
+           }
+         });
 
          doc.end();
      } catch (err) {
