@@ -7,13 +7,16 @@ import { z } from "zod";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
-import { examEvents, subjects, users, students, settings, classes } from "@shared/schema";
+import { BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+
+  // Set timezone for the process (Asia/Dubai)
+  process.env.TZ = "Asia/Dubai";
 
   // === EXAMS ===
   app.get(api.exams.list.path, async (req, res) => {
@@ -208,6 +211,7 @@ export async function registerRoutes(
          days.forEach((day, i) => {
            const y = startY + (i * cellHeight);
            const date = addDays(weekStart, i);
+           const isFri = day === 'Friday';
            
            // Day Label
            doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.primary)
@@ -222,7 +226,7 @@ export async function registerRoutes(
              doc.rect(x, y, periodColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
              
              // Friday restriction
-             if (day === 'Friday' && p > 4) {
+             if (isFri && p > 4) {
                doc.rect(x + 0.5, y + 0.5, periodColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
                continue;
              }
@@ -255,9 +259,14 @@ export async function registerRoutes(
                  doc.fontSize(6).font('Helvetica')
                     .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
                  
+                 // Get Bell Time
+                 const gradeLevel = getGradeLevel(e.class.name);
+                 const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
+                 const timeRange = (schedule as any)[p] || "";
+
                  // Type & Creator
                  doc.fontSize(5)
-                    .text(e.type, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
+                    .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
                  
                  const creatorLastName = e.creator.name.split(' ').pop();
                  doc.text(`Prof: ${creatorLastName}`, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });

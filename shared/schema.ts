@@ -8,6 +8,61 @@ export const classPrograms = ["AET", "AMT", "ENI", "CAI", "ASP"] as const;
 export const examTypes = ["EXAM", "QUIZ"] as const;
 export const examStatuses = ["SCHEDULED", "CANCELLED"] as const;
 
+// Bell Schedules Constants
+export const BELL_SCHEDULES = {
+  G9_10: {
+    MON_THU: {
+      1: "07:30–08:20",
+      2: "08:25–09:15",
+      break1: "09:15–09:30 (Break)",
+      3: "09:30–10:20",
+      4: "10:25–11:15",
+      5: "11:20–12:10",
+      break2: "12:10–12:40 (Break)",
+      6: "12:40–13:30",
+      7: "13:35–14:25",
+      8: "14:30–15:10",
+    },
+    FRI: {
+      1: "07:30–08:20",
+      2: "08:25–09:15",
+      break1: "09:15–09:25 (Break)",
+      3: "09:25–10:15",
+      4: "10:20–11:10",
+    }
+  },
+  G11_12: {
+    MON_THU: {
+      1: "07:30–08:20",
+      2: "08:25–09:15",
+      3: "09:20–10:10",
+      break1: "10:10–10:25 (Break)",
+      4: "10:25–11:15",
+      5: "11:20–12:10",
+      6: "12:15–13:05",
+      break2: "13:05–13:35 (Break)",
+      7: "13:35–14:25",
+      8: "14:30–15:10",
+    },
+    FRI: {
+      1: "07:30–08:20",
+      2: "08:25–09:15",
+      3: "09:20–10:10",
+      break1: "10:10–10:20 (Break)",
+      4: "10:20–11:10",
+    }
+  }
+} as const;
+
+export const getGradeLevel = (className: string): "G9_10" | "G11_12" => {
+  const match = className.match(/A(10|11|12|9)/);
+  if (match) {
+    const grade = parseInt(match[1]);
+    return grade <= 10 ? "G9_10" : "G11_12";
+  }
+  return "G9_10";
+};
+
 // Tables
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -53,7 +108,6 @@ export const examEvents = pgTable("exam_events", {
 
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
-  // JSON structure: { "Monday": ["08:00", "08:50", ...], ... }
   bellScheduleJson: jsonb("bell_schedule_json").$type<Record<string, string[]>>().notNull(),
   maxExamsPerDay: integer("max_exams_per_day").default(3).notNull(),
 });

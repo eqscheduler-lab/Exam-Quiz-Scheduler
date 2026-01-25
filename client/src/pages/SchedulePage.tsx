@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ExamDialog } from "@/components/ExamDialog";
-import { type Class } from "@shared/schema";
+import { type Class, BELL_SCHEDULES, getGradeLevel } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -42,6 +42,9 @@ export default function SchedulePage() {
     queryKey: ["/api/classes"],
   });
 
+  const selectedClass = classes?.find(c => c.id.toString() === selectedClassId);
+  const gradeLevel = selectedClass ? getGradeLevel(selectedClass.name) : "G9_10";
+
   const { data: exams, isLoading } = useExams({
     weekStart: weekStart.toISOString(),
     classId: selectedClassId !== "all" ? Number(selectedClassId) : undefined,
@@ -51,7 +54,7 @@ export default function SchedulePage() {
     const params = new URLSearchParams({
         weekStart: weekStart.toISOString(),
     });
-    if (selectedClassId && selectedClassId !== "all") {
+    if (selectedClassId !== "all") {
       params.append("classId", selectedClassId);
     }
     window.open(`${api.schedule.pdf.path}?${params.toString()}`, '_blank');
@@ -107,6 +110,7 @@ export default function SchedulePage() {
              <ExamDialog 
                initialDate={cellDate}
                initialPeriod={period}
+               initialClassId={selectedClassId !== "all" ? Number(selectedClassId) : undefined}
                trigger={
                  <button className="w-full h-full border-2 border-dashed border-primary/20 rounded-lg flex items-center justify-center text-primary/40 hover:text-primary hover:bg-primary/5 hover:border-primary transition-all">
                    <span className="text-sm font-medium">+ Add</span>
@@ -168,7 +172,7 @@ export default function SchedulePage() {
                   <div key={period} className="p-4 text-center border-r border-border last:border-r-0 flex flex-col items-center justify-center">
                     <div className="font-bold text-foreground">P{period}</div>
                     <div className="text-[10px] text-muted-foreground">
-                      {period === 1 ? '08:00' : period === 2 ? '08:50' : period === 3 ? '09:40' : period === 4 ? '10:30' : period === 5 ? '11:20' : period === 6 ? '12:10' : period === 7 ? '13:00' : '13:50'}
+                       Dubai Time
                     </div>
                   </div>
                 ))}
@@ -176,19 +180,32 @@ export default function SchedulePage() {
 
               {/* Body: Days */}
               <div className="divide-y divide-border">
-                {DAYS.map((day, i) => (
-                  <div key={day} className="grid grid-cols-[150px_repeat(8,1fr)]">
-                    <div className="p-4 border-r border-border flex flex-col items-center justify-center bg-muted/10">
-                      <span className="font-bold text-foreground">{day}</span>
-                      <span className="text-xs text-muted-foreground">{format(getDateForDay(weekStart, i), "MMM d")}</span>
-                    </div>
-                    {PERIODS.map((period) => (
-                      <div key={`${day}-${period}`} className="border-r border-border last:border-r-0 min-h-[120px]">
-                        {renderCell(day, period)}
+                {DAYS.map((day, i) => {
+                  const isFri = day === "Friday";
+                  const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
+                  
+                  return (
+                    <div key={day} className="grid grid-cols-[150px_repeat(8,1fr)]">
+                      <div className="p-4 border-r border-border flex flex-col items-center justify-center bg-muted/10">
+                        <span className="font-bold text-foreground">{day}</span>
+                        <span className="text-xs text-muted-foreground">{format(getDateForDay(weekStart, i), "MMM d")}</span>
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      {PERIODS.map((period) => {
+                        const timeRange = schedule[period as keyof typeof schedule];
+                        return (
+                          <div key={`${day}-${period}`} className="border-r border-border last:border-r-0 min-h-[120px] relative">
+                            {timeRange && (
+                              <div className="absolute top-0 right-1 text-[9px] text-muted-foreground/60 font-mono">
+                                {timeRange}
+                              </div>
+                            )}
+                            {renderCell(day, period)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
