@@ -107,7 +107,18 @@ export async function registerRoutes(
 
   app.delete("/api/classes/:id", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
-    res.sendStatus(200);
+    try {
+      const classId = parseInt(req.params.id);
+      await storage.deleteClass(classId);
+      res.sendStatus(200);
+    } catch (error: any) {
+      console.error("Delete class error:", error);
+      // Check for foreign key constraint error (class has exams)
+      if (error.message?.includes("foreign key constraint")) {
+        return res.status(400).json({ message: "Cannot delete class that has scheduled exams. Remove the exams first." });
+      }
+      res.status(500).json({ message: error.message || "Failed to delete class" });
+    }
   });
 
   // === SUBJECTS ===

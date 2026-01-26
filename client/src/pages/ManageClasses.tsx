@@ -48,11 +48,22 @@ export default function ManageClasses() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/classes/${id}`);
+      const res = await apiRequest("DELETE", `/api/classes/${id}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to delete class");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/classes"] });
       toast({ title: "Success", description: "Class deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     },
   });
 
