@@ -67,12 +67,33 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    const ipAddress = req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown';
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ipAddress = (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : null) 
+                      || req.socket.remoteAddress 
+                      || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
+    const attemptedUsername = req.body.username || 'unknown';
     
     passport.authenticate("local", async (err: any, user: User, info: any) => {
       if (err) return next(err);
-      if (!user) return res.status(401).json({ message: info.message });
+      
+      if (!user) {
+        try {
+          const existingUser = await storage.getUserByUsername(attemptedUsername);
+          if (existingUser) {
+            await storage.createLoginAudit({
+              userId: existingUser.id,
+              username: attemptedUsername,
+              ipAddress: ipAddress,
+              userAgent: userAgent,
+              success: false
+            });
+          }
+        } catch (auditErr) {
+          console.error("Failed to log failed login audit:", auditErr);
+        }
+        return res.status(401).json({ message: info.message });
+      }
       
       req.login(user, async (err) => {
         if (err) return next(err);

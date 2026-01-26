@@ -16,6 +16,14 @@ import ManageClasses from "@/pages/ManageClasses";
 import LoginAudit from "@/pages/LoginAudit";
 import Analytics from "@/pages/Analytics";
 
+function ProtectedRoute({ component: Component, allowedRoles }: { component: React.ComponentType; allowedRoles: string[] }) {
+  const { user } = useAuth();
+  if (!user || !allowedRoles.includes(user.role)) {
+    return <Redirect to="/" />;
+  }
+  return <Component />;
+}
+
 function Router() {
   const { user, isLoading } = useAuth();
 
@@ -46,11 +54,21 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/schedule" component={SchedulePage} />
       <Route path="/my-exams" component={MyExamsPage} />
-      <Route path="/admin/users" component={ManageStaff} /> 
-      <Route path="/admin/subjects" component={ManageSubjects} />
-      <Route path="/admin/classes" component={ManageClasses} />
-      <Route path="/admin/login-audit" component={LoginAudit} />
-      <Route path="/analytics" component={Analytics} />
+      <Route path="/admin/users">
+        <ProtectedRoute component={ManageStaff} allowedRoles={["ADMIN"]} />
+      </Route>
+      <Route path="/admin/subjects">
+        <ProtectedRoute component={ManageSubjects} allowedRoles={["ADMIN"]} />
+      </Route>
+      <Route path="/admin/classes">
+        <ProtectedRoute component={ManageClasses} allowedRoles={["ADMIN"]} />
+      </Route>
+      <Route path="/admin/login-audit">
+        <ProtectedRoute component={LoginAudit} allowedRoles={["ADMIN"]} />
+      </Route>
+      <Route path="/analytics">
+        <ProtectedRoute component={Analytics} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"]} />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

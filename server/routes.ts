@@ -281,7 +281,6 @@ export async function registerRoutes(
          sortedClasses.forEach((cls, index) => {
            classColorMap.set(cls.id, classColorPalette[index % classColorPalette.length]);
          });
-         console.log("Class color mapping:", Array.from(classColorMap.entries()).map(([id, c]) => ({ id, color: c.bg })));
 
          // Header
          doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
@@ -359,7 +358,6 @@ export async function registerRoutes(
                  const boxWidth = periodColWidth - (margin * 2);
                  
                  // Get class-specific color
-                 console.log("Exam classId:", e.classId, "class name:", e.class?.name, "has mapping:", classColorMap.has(e.classId));
                  const classColor = classColorMap.get(e.classId) || classColorPalette[0];
                  
                  // Rounded box for exam with class color
