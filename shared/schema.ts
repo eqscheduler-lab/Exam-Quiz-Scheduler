@@ -109,7 +109,7 @@ export const examEvents = pgTable("exam_events", {
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
   bellScheduleJson: jsonb("bell_schedule_json").$type<Record<string, string[]>>().notNull(),
-  maxExamsPerDay: integer("max_exams_per_day").default(3).notNull(),
+  maxExamsPerDay: integer("max_exams_per_day").default(2).notNull(),
 });
 
 // Insert Schemas

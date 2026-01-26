@@ -50,7 +50,7 @@ export async function registerRoutes(
       }
 
       const count = await storage.getExamCountForClassDay(date, input.classId);
-      if (count >= 3) {
+      if (count >= 2) {
         return res.status(400).json({ 
             message: "The maximum number of exams is reached, please choose another day to conduct your exam." 
         });
