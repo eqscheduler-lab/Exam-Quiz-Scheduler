@@ -134,6 +134,34 @@ export async function registerRoutes(
     res.status(201).json(subject);
   });
 
+  app.patch("/api/subjects/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== 'ADMIN') return res.sendStatus(403);
+    try {
+      const subjectId = parseInt(req.params.id);
+      const { name, code } = req.body;
+      const subject = await storage.updateSubject(subjectId, { name, code });
+      res.json(subject);
+    } catch (error: any) {
+      console.error("Update subject error:", error);
+      res.status(500).json({ message: error.message || "Failed to update subject" });
+    }
+  });
+
+  app.delete("/api/subjects/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== 'ADMIN') return res.sendStatus(403);
+    try {
+      const subjectId = parseInt(req.params.id);
+      await storage.deleteSubject(subjectId);
+      res.sendStatus(200);
+    } catch (error: any) {
+      console.error("Delete subject error:", error);
+      if (error.message?.includes("foreign key constraint")) {
+        return res.status(400).json({ message: "Cannot delete subject that has scheduled exams. Remove the exams first." });
+      }
+      res.status(500).json({ message: error.message || "Failed to delete subject" });
+    }
+  });
+
   // === USERS/STUDENTS ===
   app.post("/api/admin/users", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);

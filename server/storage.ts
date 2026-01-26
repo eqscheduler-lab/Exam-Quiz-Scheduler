@@ -22,6 +22,8 @@ export interface IStorage {
   // Subjects
   getAllSubjects(): Promise<Subject[]>;
   createSubject(subject: typeof subjects.$inferInsert): Promise<Subject>;
+  updateSubject(id: number, subject: Partial<typeof subjects.$inferInsert>): Promise<Subject>;
+  deleteSubject(id: number): Promise<void>;
 
   // Students
   getAllStudents(): Promise<typeof students.$inferSelect[]>;
@@ -92,6 +94,15 @@ export class DatabaseStorage implements IStorage {
   async createSubject(subject: typeof subjects.$inferInsert): Promise<Subject> {
     const [newSubject] = await db.insert(subjects).values(subject).returning();
     return newSubject;
+  }
+
+  async updateSubject(id: number, subject: Partial<typeof subjects.$inferInsert>): Promise<Subject> {
+    const [updatedSubject] = await db.update(subjects).set(subject).where(eq(subjects.id, id)).returning();
+    return updatedSubject;
+  }
+
+  async deleteSubject(id: number): Promise<void> {
+    await db.delete(subjects).where(eq(subjects.id, id));
   }
 
   async getAllStudents(): Promise<typeof students.$inferSelect[]> {
