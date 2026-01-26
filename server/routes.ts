@@ -310,6 +310,38 @@ export async function registerRoutes(
   });
 
   // === SEED DATA ===
+  const adminHash = await bcrypt.hash("Man@4546161", 10);
+  const admin2Hash = await bcrypt.hash("Staff@123", 10);
+  
+  // Force update admin passwords on start to ensure they work
+  const adminUser = await storage.getUserByUsername("admin");
+  if (adminUser) {
+    await storage.updateUser(adminUser.id, { password: adminHash });
+  } else {
+    await storage.createUser({
+      username: "admin",
+      password: adminHash,
+      role: "ADMIN",
+      name: "Admin User",
+      email: "admin@school.com",
+      isActive: true
+    });
+  }
+
+  const admin2User = await storage.getUserByUsername("admin2");
+  if (admin2User) {
+    await storage.updateUser(admin2User.id, { password: admin2Hash });
+  } else {
+    await storage.createUser({
+      username: "admin2",
+      password: admin2Hash,
+      role: "ADMIN",
+      name: "System Admin",
+      email: "admin2@school.com",
+      isActive: true
+    });
+  }
+
   await seed();
 
   return httpServer;
