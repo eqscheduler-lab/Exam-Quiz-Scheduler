@@ -237,8 +237,9 @@ export async function registerRoutes(
            margins: { top: 30, left: 30, right: 30, bottom: 30 }
          });
          
+         const extractionDate = format(new Date(), 'yyyy-MM-dd');
          res.setHeader('Content-Type', 'application/pdf');
-         res.setHeader('Content-Disposition', 'attachment; filename=schedule.pdf');
+         res.setHeader('Content-Disposition', `attachment; filename="Exam Schedule ${extractionDate}.pdf"`);
          doc.pipe(res);
 
          // Helper for colors (modern palette)
@@ -273,12 +274,14 @@ export async function registerRoutes(
            { bg: '#bbf7d0', border: '#4ade80', text: '#15803d' },  // Light Green
          ];
 
-         // Build class-to-color mapping
+         // Build class-to-color mapping (sorted by name for consistent colors)
          const allClasses = await storage.getAllClasses();
+         const sortedClasses = [...allClasses].sort((a, b) => a.name.localeCompare(b.name));
          const classColorMap = new Map<number, typeof classColorPalette[0]>();
-         allClasses.forEach((cls, index) => {
+         sortedClasses.forEach((cls, index) => {
            classColorMap.set(cls.id, classColorPalette[index % classColorPalette.length]);
          });
+         console.log("Class color mapping:", Array.from(classColorMap.entries()).map(([id, c]) => ({ id, color: c.bg })));
 
          // Header
          doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
@@ -356,6 +359,7 @@ export async function registerRoutes(
                  const boxWidth = periodColWidth - (margin * 2);
                  
                  // Get class-specific color
+                 console.log("Exam classId:", e.classId, "class name:", e.class?.name, "has mapping:", classColorMap.has(e.classId));
                  const classColor = classColorMap.get(e.classId) || classColorPalette[0];
                  
                  // Rounded box for exam with class color
