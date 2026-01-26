@@ -383,8 +383,7 @@ export async function registerRoutes(
                  doc.fontSize(5)
                     .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
                  
-                 const creatorLastName = e.creator.name.split(' ').pop();
-                 doc.text(creatorLastName, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                 doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
                });
              }
            }
