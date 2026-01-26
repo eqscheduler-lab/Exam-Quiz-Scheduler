@@ -7,8 +7,32 @@ import { z } from "zod";
 // @ts-ignore
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
+import multer from "multer";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
-import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes } from "../shared/schema";
+import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes, userRoles } from "../shared/schema";
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+function parseCSV(content: string): Record<string, string>[] {
+  const lines = content.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  
+  const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+  const rows: Record<string, string>[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(",").map(v => v.trim());
+    if (values.length !== headers.length) continue;
+    
+    const row: Record<string, string> = {};
+    headers.forEach((header, idx) => {
+      row[header] = values[idx];
+    });
+    rows.push(row);
+  }
+  
+  return rows;
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -249,6 +273,154 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Factory reset error:", error);
       res.status(500).json({ message: error.message || "Failed to reset" });
+    }
+  });
+
+  // === BULK IMPORT ===
+  app.post("/api/admin/bulk-import/staff", upload.single("file"), async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const content = req.file.buffer.toString("utf-8");
+      const rows = parseCSV(content);
+      
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "CSV file is empty or invalid format" });
+      }
+      
+      let success = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      const defaultPassword = await bcrypt.hash("Staff123", 10);
+      
+      for (const row of rows) {
+        try {
+          const { name, username, email, role } = row;
+          
+          if (!name || !username || !email || !role) {
+            errors.push(`Row missing required fields: ${JSON.stringify(row)}`);
+            failed++;
+            continue;
+          }
+          
+          const normalizedRole = role.toUpperCase();
+          if (!userRoles.includes(normalizedRole as any)) {
+            errors.push(`Invalid role "${role}" for user ${username}. Valid roles: ${userRoles.join(", ")}`);
+            failed++;
+            continue;
+          }
+          
+          await storage.createUser({
+            name,
+            username: username.toLowerCase(),
+            email: email.toLowerCase(),
+            role: normalizedRole as typeof userRoles[number],
+            password: defaultPassword,
+            isActive: true,
+          });
+          success++;
+        } catch (error: any) {
+          errors.push(`Failed to import ${row.username || "unknown"}: ${error.message}`);
+          failed++;
+        }
+      }
+      
+      res.json({ success, failed, errors });
+    } catch (error: any) {
+      console.error("Staff import error:", error);
+      res.status(500).json({ message: error.message || "Import failed" });
+    }
+  });
+
+  app.post("/api/admin/bulk-import/subjects", upload.single("file"), async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const content = req.file.buffer.toString("utf-8");
+      const rows = parseCSV(content);
+      
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "CSV file is empty or invalid format" });
+      }
+      
+      let success = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      
+      for (const row of rows) {
+        try {
+          const { code, name } = row;
+          
+          if (!code || !name) {
+            errors.push(`Row missing required fields: ${JSON.stringify(row)}`);
+            failed++;
+            continue;
+          }
+          
+          await storage.createSubject({ code: code.toUpperCase(), name });
+          success++;
+        } catch (error: any) {
+          errors.push(`Failed to import ${row.code || "unknown"}: ${error.message}`);
+          failed++;
+        }
+      }
+      
+      res.json({ success, failed, errors });
+    } catch (error: any) {
+      console.error("Subjects import error:", error);
+      res.status(500).json({ message: error.message || "Import failed" });
+    }
+  });
+
+  app.post("/api/admin/bulk-import/classes", upload.single("file"), async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const content = req.file.buffer.toString("utf-8");
+      const rows = parseCSV(content);
+      
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "CSV file is empty or invalid format" });
+      }
+      
+      let success = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      
+      for (const row of rows) {
+        try {
+          const { name } = row;
+          
+          if (!name) {
+            errors.push(`Row missing class name: ${JSON.stringify(row)}`);
+            failed++;
+            continue;
+          }
+          
+          await storage.createClass({ name });
+          success++;
+        } catch (error: any) {
+          errors.push(`Failed to import ${row.name || "unknown"}: ${error.message}`);
+          failed++;
+        }
+      }
+      
+      res.json({ success, failed, errors });
+    } catch (error: any) {
+      console.error("Classes import error:", error);
+      res.status(500).json({ message: error.message || "Import failed" });
     }
   });
 

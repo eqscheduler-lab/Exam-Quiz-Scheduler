@@ -38,10 +38,18 @@ Preferred communication style: Simple, everyday language.
 
 ### Key Business Rules
 1. **Period Scheduling**: Monday-Thursday has 8 periods (50 min each); Friday has 4 periods
-2. **Exam Limit**: Maximum 3 exams per Class+Section per day
+2. **Booking Limits**: 
+   - Quiz: Maximum 1 per class per day
+   - Homework: Unlimited per day
 3. **Role Permissions**:
-   - Teachers: Create/manage their own exams, view schedules
-   - Admins: Full access including user/subject/student management
+   - Teachers: Create/manage their own exams, view schedules, cancel own bookings
+   - Admins: Full access including user/subject/student management, bulk import
+
+### Bulk Import Feature
+Admins can bulk import data using CSV files with downloadable templates:
+- **Staff Import** (`/admin/bulk-import`): Import teachers/coordinators/admins with columns: name, username, email, role. Default password: "Staff123"
+- **Subjects Import**: Import subjects with columns: code, name
+- **Classes Import**: Import classes with column: name (format: A[Grade][Program]/Section)
 
 ### Project Structure
 ```

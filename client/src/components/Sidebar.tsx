@@ -11,7 +11,8 @@ import {
   BarChart3,
   Shield,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  FileUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -177,6 +178,16 @@ export function Sidebar() {
             )} data-testid="link-login-audit">
               <Shield className="w-4 h-4" />
               Login Audit
+            </Link>
+
+            <Link href="/admin/bulk-import" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive("/admin/bulk-import") 
+                ? "bg-primary/10 text-primary shadow-sm" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )} data-testid="link-bulk-import">
+              <FileUp className="w-4 h-4" />
+              Bulk Import
             </Link>
           </>
         )}
