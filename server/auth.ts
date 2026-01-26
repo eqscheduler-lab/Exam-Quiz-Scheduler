@@ -41,8 +41,11 @@ export function setupAuth(app: Express) {
            return done(null, false, { message: "User account is inactive." });
         }
 
+        console.log(`Login attempt for: ${username}`);
         const isMatch = await bcrypt.compare(password, user.password);
+        console.log(`Password match: ${isMatch}`);
         if (!isMatch) {
+          console.log(`Hash in DB: ${user.password}`);
           return done(null, false, { message: "Incorrect password." });
         }
 
