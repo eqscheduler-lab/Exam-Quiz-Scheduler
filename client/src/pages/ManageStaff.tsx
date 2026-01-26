@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, UserPlus, Mail, Shield, Trash2, Loader2 } from "lucide-react";
+import { Plus, UserPlus, Mail, Shield, Trash2, Loader2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@shared/routes";
 import { type User, userRoles } from "@shared/schema";
@@ -51,6 +51,34 @@ export default function ManageStaff() {
   const { data: staff, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
+
+  const exportStaffList = () => {
+    if (!staff) return;
+    
+    const headers = ["Name", "Username", "Email", "Role", "Status", "Default Password"];
+    const rows = [...staff]
+      .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0))
+      .map(member => [
+        member.name,
+        member.username,
+        member.email,
+        member.role,
+        member.isActive ? "Active" : "Inactive",
+        "Staff123"
+      ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Staff_List_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
 
   const form = useForm<CreateStaffData>({
     resolver: zodResolver(createStaffSchema),
@@ -112,13 +140,18 @@ export default function ManageStaff() {
             <h2 className="text-xl font-bold font-display">Manage School Staff</h2>
             <p className="text-muted-foreground text-sm">Create and manage accounts for teachers and administrators</p>
           </div>
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <UserPlus className="w-4 h-4" />
-                Add Staff Member
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" onClick={exportStaffList} disabled={!staff || staff.length === 0} data-testid="button-export-staff">
+              <Download className="w-4 h-4" />
+              Export List
+            </Button>
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <UserPlus className="w-4 h-4" />
+                  Add Staff Member
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Add New Staff Member</DialogTitle>
@@ -197,7 +230,8 @@ export default function ManageStaff() {
                 </form>
               </Form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         <Card>
