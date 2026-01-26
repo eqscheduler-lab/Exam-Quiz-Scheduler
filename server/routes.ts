@@ -399,6 +399,36 @@ export async function registerRoutes(
      }
   });
 
+  // === LOGIN AUDIT (Admin only) ===
+  app.get("/api/admin/login-audit", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") {
+      return res.sendStatus(403);
+    }
+    try {
+      const logs = await storage.getLoginAuditLogs();
+      res.json(logs);
+    } catch (error) {
+      console.error("Login audit error:", error);
+      res.status(500).json({ message: "Failed to fetch login audit logs" });
+    }
+  });
+
+  // === ANALYTICS (Admin, Principal, Vice Principal) ===
+  app.get("/api/analytics", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const role = (req.user as any).role;
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+      return res.sendStatus(403);
+    }
+    try {
+      const analytics = await storage.getExamAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("Analytics error:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   // === SEED DATA ===
   // Generate fresh hashes on each startup to ensure passwords work
   const adminHash = await bcrypt.hash("Man@4546161", 10);

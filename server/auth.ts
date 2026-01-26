@@ -67,11 +67,28 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: User, info: any) => {
+    const ipAddress = req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    
+    passport.authenticate("local", async (err: any, user: User, info: any) => {
       if (err) return next(err);
       if (!user) return res.status(401).json({ message: info.message });
-      req.login(user, (err) => {
+      
+      req.login(user, async (err) => {
         if (err) return next(err);
+        
+        try {
+          await storage.createLoginAudit({
+            userId: user.id,
+            username: user.username,
+            ipAddress: ipAddress,
+            userAgent: userAgent,
+            success: true
+          });
+        } catch (auditErr) {
+          console.error("Failed to log login audit:", auditErr);
+        }
+        
         res.json(user);
       });
     })(req, res, next);
