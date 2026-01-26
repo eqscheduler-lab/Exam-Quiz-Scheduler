@@ -460,17 +460,6 @@ export async function registerRoutes(
          const classIdsStr = req.query.classIds as string | undefined;
          const classIds = classIdsStr ? classIdsStr.split(',').map(Number).filter(n => !isNaN(n)) : undefined;
          
-         // Fetch exams - if classIds provided, fetch for multiple classes
-         let exams;
-         if (classIds && classIds.length > 0) {
-           const examsArrays = await Promise.all(
-             classIds.map(cId => storage.getExams({ weekStart, weekEnd, classId: cId }))
-           );
-           exams = examsArrays.flat();
-         } else {
-           exams = await storage.getExams({ weekStart, weekEnd, classId });
-         }
-         
          const doc = new PDFDocument({ 
            layout: 'landscape', 
            size: 'A4',
@@ -522,116 +511,204 @@ export async function registerRoutes(
            classColorMap.set(cls.id, classColorPalette[index % classColorPalette.length]);
          });
 
-         // Header
-         doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
-            .text('Exam & Quiz Schedule', { align: 'center' });
-         doc.fontSize(12).fillColor(colors.secondary)
-            .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
-         
-         if (classIds && classIds.length > 0) {
-           const selectedClasses = allClasses.filter(c => classIds.includes(c.id));
-           const classNames = selectedClasses.map(c => c.name).join(', ');
-           doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
-              .text(`Classes: ${classNames}`, { align: 'center' });
-         } else if (classId) {
-           const cls = allClasses.find(c => c.id === classId);
-           if (cls) {
-             doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
-                .text(`Class: ${cls.name}`, { align: 'center' });
-           }
-         } else {
-           doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
-              .text(`Whole School Schedule`, { align: 'center' });
-         }
-         doc.moveDown(1);
-
          // Grid Configuration
          const startX = 40;
          const startY = 130;
          const tableWidth = doc.page.width - 80;
-         const dayColWidth = 100; // Fixed width for day labels
+         const dayColWidth = 100;
          const periodColWidth = (tableWidth - dayColWidth) / 8;
          const cellHeight = 70;
          const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-         const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-         
-         // Draw Header (Periods)
-         doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary);
-         for (let p = 1; p <= 8; p++) {
-           const x = startX + dayColWidth + ((p - 1) * periodColWidth);
-           doc.text(`P${p}`, x, startY - 20, { width: periodColWidth, align: 'center' });
-           doc.font('Helvetica').fontSize(7).fillColor(colors.secondary)
-              .text('PERIOD', x, startY - 10, { width: periodColWidth, align: 'center' });
-         }
 
-         // Draw Grid and Content
-         days.forEach((day, i) => {
-           const y = startY + (i * cellHeight);
-           const date = addDays(weekStart, i);
-           const isFri = day === 'Friday';
+         // Helper function to draw a schedule page for a specific class
+         const drawSchedulePage = async (targetClassId: number | undefined, className: string, exams: any[]) => {
+           // Header
+           doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
+              .text('Exam & Quiz Schedule', { align: 'center' });
+           doc.fontSize(12).fillColor(colors.secondary)
+              .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
            
-           // Day Label
-           doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.primary)
-              .text(day.toUpperCase(), startX, y + cellHeight/2 - 10, { width: dayColWidth });
-           doc.font('Helvetica').fontSize(8).fillColor(colors.secondary)
-              .text(format(date, 'MMM d'), startX, y + cellHeight/2 + 2, { width: dayColWidth });
+           doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
+              .text(`Class: ${className}`, { align: 'center' });
+           doc.moveDown(1);
 
+           // Draw Header (Periods)
+           doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary);
            for (let p = 1; p <= 8; p++) {
              const x = startX + dayColWidth + ((p - 1) * periodColWidth);
-             
-             // Draw Cell Border
-             doc.rect(x, y, periodColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
-             
-             // Friday restriction
-             if (isFri && p > 4) {
-               doc.rect(x + 0.5, y + 0.5, periodColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
-               continue;
-             }
-
-             const dayExams = exams.filter(e => {
-               const eDate = new Date(e.date);
-               return eDate.getDate() === date.getDate() && 
-                      eDate.getMonth() === date.getMonth() &&
-                      e.period === p;
-             });
-
-             if (dayExams.length > 0) {
-               dayExams.forEach((e) => {
-                 const margin = 2;
-                 const boxHeight = cellHeight - (margin * 2);
-                 const boxWidth = periodColWidth - (margin * 2);
-                 
-                 // Get class-specific color
-                 const classColor = classColorMap.get(e.classId) || classColorPalette[0];
-                 
-                 // Rounded box for exam with class color
-                 doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
-                    .fillAndStroke(classColor.bg, classColor.border);
-                 
-                 doc.fillColor(classColor.text);
-                 
-                 // Subject code
-                 doc.fontSize(7).font('Helvetica-Bold')
-                    .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
-                 
-                 // Class name (condensed)
-                 doc.fontSize(6).font('Helvetica')
-                    .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
-                 
-                 // Get Bell Time
-                 const gradeLevel = getGradeLevel(e.class.name);
-                 const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
-                 const timeRange = (schedule as any)[p] || "";
-
-                 // Type & Creator
-                 doc.fontSize(5)
-                    .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
-                 
-                 doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
-               });
-             }
+             doc.text(`P${p}`, x, startY - 20, { width: periodColWidth, align: 'center' });
+             doc.font('Helvetica').fontSize(7).fillColor(colors.secondary)
+                .text('PERIOD', x, startY - 10, { width: periodColWidth, align: 'center' });
            }
-         });
+
+           // Draw Grid and Content
+           days.forEach((day, i) => {
+             const y = startY + (i * cellHeight);
+             const date = addDays(weekStart, i);
+             const isFri = day === 'Friday';
+             
+             // Day Label
+             doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.primary)
+                .text(day.toUpperCase(), startX, y + cellHeight/2 - 10, { width: dayColWidth });
+             doc.font('Helvetica').fontSize(8).fillColor(colors.secondary)
+                .text(format(date, 'MMM d'), startX, y + cellHeight/2 + 2, { width: dayColWidth });
+
+             for (let p = 1; p <= 8; p++) {
+               const x = startX + dayColWidth + ((p - 1) * periodColWidth);
+               
+               // Draw Cell Border
+               doc.rect(x, y, periodColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
+               
+               // Friday restriction
+               if (isFri && p > 4) {
+                 doc.rect(x + 0.5, y + 0.5, periodColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
+                 return;
+               }
+
+               const dayExams = exams.filter(e => {
+                 const eDate = new Date(e.date);
+                 return eDate.getDate() === date.getDate() && 
+                        eDate.getMonth() === date.getMonth() &&
+                        e.period === p;
+               });
+
+               if (dayExams.length > 0) {
+                 dayExams.forEach((e) => {
+                   const margin = 2;
+                   const boxHeight = cellHeight - (margin * 2);
+                   const boxWidth = periodColWidth - (margin * 2);
+                   
+                   // Get class-specific color
+                   const classColor = classColorMap.get(e.classId) || classColorPalette[0];
+                   
+                   // Rounded box for exam with class color
+                   doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
+                      .fillAndStroke(classColor.bg, classColor.border);
+                   
+                   doc.fillColor(classColor.text);
+                   
+                   // Subject code
+                   doc.fontSize(7).font('Helvetica-Bold')
+                      .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
+                   
+                   // Class name (condensed)
+                   doc.fontSize(6).font('Helvetica')
+                      .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
+                   
+                   // Get Bell Time
+                   const gradeLevel = getGradeLevel(e.class.name);
+                   const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
+                   const timeRange = (schedule as any)[p] || "";
+
+                   // Type & Creator
+                   doc.fontSize(5)
+                      .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
+                   
+                   doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                 });
+               }
+             }
+           });
+         };
+
+         // Generate pages based on selection
+         if (classIds && classIds.length > 0) {
+           // Multi-class export: each class on its own page
+           for (let i = 0; i < classIds.length; i++) {
+             const cId = classIds[i];
+             const cls = allClasses.find(c => c.id === cId);
+             if (!cls) continue;
+             
+             const classExams = await storage.getExams({ weekStart, weekEnd, classId: cId });
+             
+             if (i > 0) {
+               doc.addPage();
+             }
+             
+             await drawSchedulePage(cId, cls.name, classExams);
+           }
+         } else if (classId) {
+           // Single class export
+           const cls = allClasses.find(c => c.id === classId);
+           const exams = await storage.getExams({ weekStart, weekEnd, classId });
+           await drawSchedulePage(classId, cls?.name || 'Unknown', exams);
+         } else {
+           // Whole school - single page with all exams
+           const exams = await storage.getExams({ weekStart, weekEnd });
+           
+           // Header
+           doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
+              .text('Exam & Quiz Schedule', { align: 'center' });
+           doc.fontSize(12).fillColor(colors.secondary)
+              .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
+           doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
+              .text(`Whole School Schedule`, { align: 'center' });
+           doc.moveDown(1);
+
+           // Draw Header (Periods)
+           doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary);
+           for (let p = 1; p <= 8; p++) {
+             const x = startX + dayColWidth + ((p - 1) * periodColWidth);
+             doc.text(`P${p}`, x, startY - 20, { width: periodColWidth, align: 'center' });
+             doc.font('Helvetica').fontSize(7).fillColor(colors.secondary)
+                .text('PERIOD', x, startY - 10, { width: periodColWidth, align: 'center' });
+           }
+
+           // Draw Grid and Content
+           days.forEach((day, i) => {
+             const y = startY + (i * cellHeight);
+             const date = addDays(weekStart, i);
+             const isFri = day === 'Friday';
+             
+             doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.primary)
+                .text(day.toUpperCase(), startX, y + cellHeight/2 - 10, { width: dayColWidth });
+             doc.font('Helvetica').fontSize(8).fillColor(colors.secondary)
+                .text(format(date, 'MMM d'), startX, y + cellHeight/2 + 2, { width: dayColWidth });
+
+             for (let p = 1; p <= 8; p++) {
+               const x = startX + dayColWidth + ((p - 1) * periodColWidth);
+               
+               doc.rect(x, y, periodColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
+               
+               if (isFri && p > 4) {
+                 doc.rect(x + 0.5, y + 0.5, periodColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
+                 return;
+               }
+
+               const dayExams = exams.filter(e => {
+                 const eDate = new Date(e.date);
+                 return eDate.getDate() === date.getDate() && 
+                        eDate.getMonth() === date.getMonth() &&
+                        e.period === p;
+               });
+
+               if (dayExams.length > 0) {
+                 dayExams.forEach((e) => {
+                   const margin = 2;
+                   const boxHeight = cellHeight - (margin * 2);
+                   const boxWidth = periodColWidth - (margin * 2);
+                   const classColor = classColorMap.get(e.classId) || classColorPalette[0];
+                   
+                   doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
+                      .fillAndStroke(classColor.bg, classColor.border);
+                   
+                   doc.fillColor(classColor.text);
+                   doc.fontSize(7).font('Helvetica-Bold')
+                      .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
+                   doc.fontSize(6).font('Helvetica')
+                      .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
+                   
+                   const gradeLevel = getGradeLevel(e.class.name);
+                   const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
+                   const timeRange = (schedule as any)[p] || "";
+                   doc.fontSize(5)
+                      .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
+                   doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                 });
+               }
+             }
+           });
+         }
 
          doc.end();
      } catch (err) {
