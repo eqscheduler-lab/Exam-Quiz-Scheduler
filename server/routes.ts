@@ -316,8 +316,10 @@ export async function registerRoutes(
   // Force update admin passwords on start to ensure they work
   const adminUser = await storage.getUserByUsername("admin");
   if (adminUser) {
+    console.log("Found admin user, updating password...");
     await storage.updateUser(adminUser.id, { password: adminHash });
   } else {
+    console.log("Admin user not found, creating...");
     await storage.createUser({
       username: "admin",
       password: adminHash,
@@ -330,8 +332,10 @@ export async function registerRoutes(
 
   const admin2User = await storage.getUserByUsername("admin2");
   if (admin2User) {
+    console.log("Found admin2 user, updating password...");
     await storage.updateUser(admin2User.id, { password: admin2Hash });
   } else {
+    console.log("Admin2 user not found, creating...");
     await storage.createUser({
       username: "admin2",
       password: admin2Hash,
