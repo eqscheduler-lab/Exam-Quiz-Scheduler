@@ -195,6 +195,19 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/admin/users/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const userId = parseInt(req.params.id);
+      const { name, email, role, isActive } = req.body;
+      await storage.updateUser(userId, { name, email, role, isActive });
+      res.sendStatus(200);
+    } catch (error: any) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: error.message || "Failed to update user" });
+    }
+  });
+
   app.post("/api/user/change-password", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { currentPassword, newPassword } = req.body;

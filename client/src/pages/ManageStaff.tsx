@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, UserPlus, Mail, Shield, Trash2, Loader2, Download } from "lucide-react";
+import { Plus, UserPlus, Mail, Shield, Trash2, Loader2, Download, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@shared/routes";
 import { type User, userRoles } from "@shared/schema";
@@ -47,6 +47,7 @@ export default function ManageStaff() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const { data: staff, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -127,6 +128,28 @@ export default function ManageStaff() {
       toast({ 
         title: "Error", 
         description: error.message || "Failed to deactivate staff member", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async (data: { id: number; name: string; email: string; role: string; isActive: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/admin/users/${data.id}`, data);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to update user");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Success", description: "Staff member updated" });
+      setEditingUser(null);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update staff member", 
         variant: "destructive" 
       });
     },
@@ -267,22 +290,96 @@ export default function ManageStaff() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteMutation.mutate(member.id)}
-                      disabled={deleteMutation.isPending}
-                      data-testid={`button-delete-user-${member.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground"
+                        onClick={() => setEditingUser(member)}
+                        data-testid={`button-edit-user-${member.id}`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteMutation.mutate(member.id)}
+                        disabled={deleteMutation.isPending}
+                        data-testid={`button-delete-user-${member.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </Card>
+
+        {/* Edit User Dialog */}
+        <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Staff Member</DialogTitle>
+            </DialogHeader>
+            {editingUser && (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                editMutation.mutate({
+                  id: editingUser.id,
+                  name: formData.get("name") as string,
+                  email: formData.get("email") as string,
+                  role: formData.get("role") as string,
+                  isActive: formData.get("isActive") === "true",
+                });
+              }} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Full Name</label>
+                  <Input name="name" defaultValue={editingUser.name} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email Address</label>
+                  <Input name="email" type="email" defaultValue={editingUser.email} required />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Role</label>
+                  <Select name="role" defaultValue={editingUser.role}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userRoles.map((role) => (
+                        <SelectItem key={role} value={role}>{role}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select name="isActive" defaultValue={editingUser.isActive ? "true" : "false"}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Active</SelectItem>
+                      <SelectItem value="false">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                  <Button type="submit" disabled={editMutation.isPending}>
+                    {editMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
