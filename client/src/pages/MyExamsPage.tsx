@@ -18,12 +18,9 @@ export default function MyExamsPage() {
   
   // Fetch ALL exams, then filter client side for MVP (ideally API filters by teacherId)
   // Our API route schema supports teacherId filter
-  const { data: allExams, isLoading } = useExams({
+  const { data: exams, isLoading } = useExams({
     teacherId: user?.id
   });
-
-  // Filter out cancelled exams
-  const exams = allExams?.filter((exam: any) => exam.status !== "CANCELLED");
 
   const handleCancelClick = (exam: any) => {
     setExamToCancel({ id: exam.id, title: `${exam.subject.name} - ${exam.type}` });

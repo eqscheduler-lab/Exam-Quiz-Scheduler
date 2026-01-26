@@ -131,6 +131,10 @@ export class DatabaseStorage implements IStorage {
     teacherId?: number 
   }): Promise<(ExamEvent & { subject: Subject, creator: User, class: Class })[]> {
     const conditions = [];
+    
+    // Only return SCHEDULED exams (not CANCELLED)
+    conditions.push(eq(examEvents.status, "SCHEDULED"));
+    
     if (filters?.weekStart && filters?.weekEnd) {
       conditions.push(and(gte(examEvents.date, filters.weekStart), lte(examEvents.date, filters.weekEnd)));
     }
