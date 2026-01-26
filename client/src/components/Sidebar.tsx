@@ -7,7 +7,9 @@ import {
   LayoutDashboard, 
   LogOut, 
   GraduationCap,
-  Lock
+  Lock,
+  BarChart3,
+  Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -53,7 +55,8 @@ export function Sidebar() {
 
   const isActive = (path: string) => location === path;
 
-  const isAdmin = ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role);
+  const isAdmin = user.role === "ADMIN";
+  const isLeadership = ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role);
   const isTeacher = user.role === "TEACHER" || user.role === "COORDINATOR";
 
   return (
@@ -107,6 +110,24 @@ export function Sidebar() {
           </Link>
         )}
 
+        {isLeadership && (
+          <>
+            <div className="px-3 py-2 mt-6 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Reports
+            </div>
+            
+            <Link href="/analytics" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive("/analytics") 
+                ? "bg-primary/10 text-primary shadow-sm" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )} data-testid="link-analytics">
+              <BarChart3 className="w-4 h-4" />
+              System Analytics
+            </Link>
+          </>
+        )}
+
         {isAdmin && (
           <>
             <div className="px-3 py-2 mt-6 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -141,6 +162,16 @@ export function Sidebar() {
             )}>
               <GraduationCap className="w-4 h-4" />
               Manage Classes
+            </Link>
+
+            <Link href="/admin/login-audit" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive("/admin/login-audit") 
+                ? "bg-primary/10 text-primary shadow-sm" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )} data-testid="link-login-audit">
+              <Shield className="w-4 h-4" />
+              Login Audit
             </Link>
           </>
         )}

@@ -13,6 +13,8 @@ import MyExamsPage from "@/pages/MyExamsPage";
 import ManageStaff from "@/pages/ManageStaff";
 import ManageSubjects from "@/pages/ManageSubjects";
 import ManageClasses from "@/pages/ManageClasses";
+import LoginAudit from "@/pages/LoginAudit";
+import Analytics from "@/pages/Analytics";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -47,6 +49,8 @@ function Router() {
       <Route path="/admin/users" component={ManageStaff} /> 
       <Route path="/admin/subjects" component={ManageSubjects} />
       <Route path="/admin/classes" component={ManageClasses} />
+      <Route path="/admin/login-audit" component={LoginAudit} />
+      <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>
   );
