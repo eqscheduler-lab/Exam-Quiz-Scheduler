@@ -113,3 +113,36 @@ export function useUpdateExam() {
     },
   });
 }
+
+export function useCancelExam() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/exams/${id}/cancel`, {
+        method: "PATCH",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to cancel booking");
+      }
+      
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.exams.list.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
+      toast({ title: "Cancelled", description: "Booking cancelled successfully." });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Cancel Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}

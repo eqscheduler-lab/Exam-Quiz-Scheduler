@@ -1,20 +1,45 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useExams } from "@/hooks/use-exams";
+import { useExams, useCancelExam } from "@/hooks/use-exams";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ExamDialog } from "@/components/ExamDialog";
 import { format } from "date-fns";
-import { Calendar, Clock, Loader2, FileEdit } from "lucide-react";
+import { Calendar, Clock, Loader2, FileEdit, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function MyExamsPage() {
   const { user } = useAuth();
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [examToCancel, setExamToCancel] = useState<{ id: number; title: string } | null>(null);
+  const cancelExam = useCancelExam();
   
   // Fetch ALL exams, then filter client side for MVP (ideally API filters by teacherId)
   // Our API route schema supports teacherId filter
-  const { data: exams, isLoading } = useExams({
+  const { data: allExams, isLoading } = useExams({
     teacherId: user?.id
   });
+
+  // Filter out cancelled exams
+  const exams = allExams?.filter((exam: any) => exam.status !== "CANCELLED");
+
+  const handleCancelClick = (exam: any) => {
+    setExamToCancel({ id: exam.id, title: `${exam.subject.name} - ${exam.type}` });
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancel = () => {
+    if (examToCancel) {
+      cancelExam.mutate(examToCancel.id, {
+        onSuccess: () => {
+          setCancelDialogOpen(false);
+          setExamToCancel(null);
+        }
+      });
+    }
+  };
 
   return (
     <Layout title="My Exams">
@@ -66,21 +91,66 @@ export default function MyExamsPage() {
                     </div>
                   </div>
 
-                  <ExamDialog 
-                    mode="edit" 
-                    examId={exam.id}
-                    defaultValues={exam}
-                    trigger={
-                      <button className="p-2 hover:bg-muted rounded-full transition-colors">
-                        <FileEdit className="w-5 h-5 text-muted-foreground hover:text-primary" />
-                      </button>
-                    } 
-                  />
+                  <div className="flex items-center gap-2">
+                    <ExamDialog 
+                      mode="edit" 
+                      examId={exam.id}
+                      defaultValues={exam}
+                      trigger={
+                        <button className="p-2 hover:bg-muted rounded-full transition-colors" data-testid={`button-edit-${exam.id}`}>
+                          <FileEdit className="w-5 h-5 text-muted-foreground hover:text-primary" />
+                        </button>
+                      } 
+                    />
+                    <button 
+                      onClick={() => handleCancelClick(exam)}
+                      className="p-2 hover:bg-destructive/10 rounded-full transition-colors"
+                      data-testid={`button-cancel-${exam.id}`}
+                    >
+                      <XCircle className="w-5 h-5 text-muted-foreground hover:text-destructive" />
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+
+        <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Cancel Booking
+              </DialogTitle>
+              <DialogDescription>
+                Are you sure you want to cancel this booking?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm">
+                <span className="font-medium">{examToCancel?.title}</span> will be cancelled and removed from the schedule.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                Keep Booking
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmCancel}
+                disabled={cancelExam.isPending}
+                data-testid="button-confirm-cancel"
+              >
+                {cancelExam.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Cancelling...</>
+                ) : (
+                  "Cancel Booking"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

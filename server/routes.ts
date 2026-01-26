@@ -80,6 +80,35 @@ export async function registerRoutes(
      }
   });
 
+  // Cancel exam (set status to CANCELLED)
+  app.patch("/api/exams/:id/cancel", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const examId = Number(req.params.id);
+      const user = req.user as any;
+      
+      // Get the exam to check ownership
+      const exams = await storage.getExams({});
+      const exam = exams.find(e => e.id === examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      
+      // Only allow creator or admin to cancel
+      if (exam.createdByUserId !== user.id && user.role !== "ADMIN") {
+        return res.status(403).json({ message: "You can only cancel your own bookings" });
+      }
+      
+      const updatedExam = await storage.updateExam(examId, { status: "CANCELLED" });
+      res.json(updatedExam);
+    } catch (err) {
+      console.error("Cancel exam error:", err);
+      res.status(400).json({ message: "Failed to cancel booking" });
+    }
+  });
+
   // === CLASSES ===
   app.get("/api/classes", async (req, res) => {
     try {
