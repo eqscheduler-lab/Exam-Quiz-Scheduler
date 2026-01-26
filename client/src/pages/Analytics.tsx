@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle, Users } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -31,14 +32,28 @@ interface AnalyticsData {
   quizCount: number;
 }
 
+interface TeacherAnalyticsData {
+  teacherId: number;
+  teacherName: string;
+  classId: number;
+  className: string;
+  homeworkCount: number;
+  quizCount: number;
+}
+
 export default function Analytics() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [selectedTeacher, setSelectedTeacher] = useState<string>("all");
   
   const { data: analytics, isLoading } = useQuery<AnalyticsData[]>({
     queryKey: ["/api/analytics"],
+  });
+
+  const { data: teacherAnalytics, isLoading: isLoadingTeachers } = useQuery<TeacherAnalyticsData[]>({
+    queryKey: ["/api/analytics/teachers"],
   });
 
   const clearHistoryMutation = useMutation({
@@ -110,6 +125,40 @@ export default function Analytics() {
       Homework: data.exams,
       Quizzes: data.quizzes
     })) : [];
+
+  // Teacher analytics computations
+  const uniqueTeachers = teacherAnalytics 
+    ? Array.from(new Map(teacherAnalytics.map(t => [t.teacherId, { id: t.teacherId, name: t.teacherName }])).values())
+    : [];
+
+  const filteredTeacherData = selectedTeacher === "all" 
+    ? teacherAnalytics 
+    : teacherAnalytics?.filter(t => t.teacherId === parseInt(selectedTeacher));
+
+  const teacherSummary = filteredTeacherData?.reduce((acc, t) => {
+    if (!acc[t.teacherId]) {
+      acc[t.teacherId] = { teacherName: t.teacherName, homework: 0, quizzes: 0, classes: new Set<string>() };
+    }
+    acc[t.teacherId].homework += t.homeworkCount;
+    acc[t.teacherId].quizzes += t.quizCount;
+    acc[t.teacherId].classes.add(t.className);
+    return acc;
+  }, {} as Record<number, { teacherName: string; homework: number; quizzes: number; classes: Set<string> }>);
+
+  const teacherChartData = teacherSummary ? Object.entries(teacherSummary)
+    .sort((a, b) => a[1].teacherName.localeCompare(b[1].teacherName))
+    .map(([_, data]) => ({
+      name: data.teacherName,
+      Homework: data.homework,
+      Quizzes: data.quizzes
+    })) : [];
+
+  const teacherClassBreakdown = filteredTeacherData?.map(t => ({
+    teacherName: t.teacherName,
+    className: t.className,
+    homework: t.homeworkCount,
+    quizzes: t.quizCount
+  })) || [];
 
   return (
     <Layout title="System Analytics">
@@ -423,6 +472,98 @@ export default function Analytics() {
                 ) : (
                   <p className="text-center text-muted-foreground py-8">No data available</p>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Teacher Analytics Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Teacher Analytics
+                  </div>
+                  <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                    <SelectTrigger className="w-48" data-testid="select-teacher-filter">
+                      <SelectValue placeholder="Select teacher" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Teachers</SelectItem>
+                      {uniqueTeachers.map(teacher => (
+                        <SelectItem key={teacher.id} value={String(teacher.id)}>
+                          {teacher.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingTeachers ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : teacherChartData.length > 0 ? (
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={teacherChartData} margin={{ bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="Homework" fill={COLORS.homework} />
+                        <Bar dataKey="Quizzes" fill={COLORS.quiz} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No teacher data available</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Teacher Class Breakdown Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Teacher-Class Breakdown
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Teacher</TableHead>
+                      <TableHead>Class</TableHead>
+                      <TableHead className="text-right">Homework</TableHead>
+                      <TableHead className="text-right">Quizzes</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {teacherClassBreakdown.length > 0 ? teacherClassBreakdown.map((row, idx) => (
+                      <TableRow key={idx} data-testid={`row-teacher-${idx}`}>
+                        <TableCell className="font-medium">{row.teacherName}</TableCell>
+                        <TableCell>{row.className}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="secondary">{row.homework}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="outline">{row.quizzes}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-bold">{row.homework + row.quizzes}</TableCell>
+                      </TableRow>
+                    )) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                          No data available
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
 

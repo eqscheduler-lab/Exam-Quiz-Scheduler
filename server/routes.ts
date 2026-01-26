@@ -483,6 +483,22 @@ export async function registerRoutes(
     }
   });
 
+  // Teacher Analytics - shows breakdown per teacher
+  app.get("/api/analytics/teachers", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const role = (req.user as any).role;
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+      return res.sendStatus(403);
+    }
+    try {
+      const teacherAnalytics = await storage.getTeacherAnalytics();
+      res.json(teacherAnalytics);
+    } catch (error) {
+      console.error("Teacher analytics error:", error);
+      res.status(500).json({ message: "Failed to fetch teacher analytics" });
+    }
+  });
+
   // === SEED DATA ===
   // Generate fresh hashes on each startup to ensure passwords work
   const adminHash = await bcrypt.hash("Man@4546161", 10);

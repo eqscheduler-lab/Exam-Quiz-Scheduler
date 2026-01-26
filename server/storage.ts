@@ -51,6 +51,7 @@ export interface IStorage {
   
   // Analytics
   getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }[]>;
+  getTeacherAnalytics(): Promise<{ teacherId: number; teacherName: string; classId: number; className: string; homeworkCount: number; quizCount: number }[]>;
   
   // Factory Reset
   factoryReset(): Promise<void>;
@@ -275,6 +276,57 @@ export class DatabaseStorage implements IStorage {
     }
 
     return Array.from(statsMap.values()).sort((a, b) => a.className.localeCompare(b.className));
+  }
+
+  async getTeacherAnalytics(): Promise<{ 
+    teacherId: number; 
+    teacherName: string; 
+    classId: number; 
+    className: string; 
+    homeworkCount: number; 
+    quizCount: number 
+  }[]> {
+    const allExams = await db.select({
+      exam: examEvents,
+      class: classes,
+      user: users
+    })
+    .from(examEvents)
+    .innerJoin(classes, eq(examEvents.classId, classes.id))
+    .innerJoin(users, eq(examEvents.createdByUserId, users.id))
+    .where(eq(examEvents.status, "SCHEDULED"));
+
+    // Aggregate by teacher and class
+    const statsMap = new Map<string, { 
+      teacherId: number; 
+      teacherName: string; 
+      classId: number; 
+      className: string; 
+      homeworkCount: number; 
+      quizCount: number 
+    }>();
+    
+    for (const row of allExams) {
+      const key = `${row.user.id}-${row.class.id}`;
+      if (!statsMap.has(key)) {
+        statsMap.set(key, {
+          teacherId: row.user.id,
+          teacherName: row.user.name,
+          classId: row.class.id,
+          className: row.class.name,
+          homeworkCount: 0,
+          quizCount: 0
+        });
+      }
+      const stat = statsMap.get(key)!;
+      if (row.exam.type === "HOMEWORK") {
+        stat.homeworkCount++;
+      } else {
+        stat.quizCount++;
+      }
+    }
+
+    return Array.from(statsMap.values()).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
   }
 
   async factoryReset(): Promise<void> {
