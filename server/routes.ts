@@ -246,14 +246,39 @@ export async function registerRoutes(
            primary: '#0f172a',
            secondary: '#64748b',
            border: '#e2e8f0',
-           examBg: '#f5f3ff',
-           examBorder: '#c4b5fd',
-           examText: '#5b21b6',
-           quizBg: '#fffbeb',
-           quizBorder: '#fcd34d',
-           quizText: '#92400e',
            mutedBg: '#f8fafc'
          };
+
+         // Distinct class color palette (20 unique colors)
+         const classColorPalette = [
+           { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },  // Blue
+           { bg: '#dcfce7', border: '#22c55e', text: '#166534' },  // Green
+           { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },  // Amber
+           { bg: '#fce7f3', border: '#ec4899', text: '#9d174d' },  // Pink
+           { bg: '#e0e7ff', border: '#6366f1', text: '#3730a3' },  // Indigo
+           { bg: '#ccfbf1', border: '#14b8a6', text: '#115e59' },  // Teal
+           { bg: '#fed7aa', border: '#f97316', text: '#9a3412' },  // Orange
+           { bg: '#f5d0fe', border: '#d946ef', text: '#86198f' },  // Fuchsia
+           { bg: '#cffafe', border: '#06b6d4', text: '#155e75' },  // Cyan
+           { bg: '#fecaca', border: '#ef4444', text: '#991b1b' },  // Red
+           { bg: '#d9f99d', border: '#84cc16', text: '#3f6212' },  // Lime
+           { bg: '#c7d2fe', border: '#818cf8', text: '#4338ca' },  // Violet
+           { bg: '#fbcfe8', border: '#f472b6', text: '#be185d' },  // Rose
+           { bg: '#a7f3d0', border: '#10b981', text: '#065f46' },  // Emerald
+           { bg: '#bfdbfe', border: '#60a5fa', text: '#1e3a8a' },  // Sky
+           { bg: '#fde68a', border: '#eab308', text: '#713f12' },  // Yellow
+           { bg: '#e9d5ff', border: '#a855f7', text: '#6b21a8' },  // Purple
+           { bg: '#99f6e4', border: '#2dd4bf', text: '#0f766e' },  // Aqua
+           { bg: '#fecdd3', border: '#fb7185', text: '#881337' },  // Coral
+           { bg: '#bbf7d0', border: '#4ade80', text: '#15803d' },  // Light Green
+         ];
+
+         // Build class-to-color mapping
+         const allClasses = await storage.getAllClasses();
+         const classColorMap = new Map<number, typeof classColorPalette[0]>();
+         allClasses.forEach((cls, index) => {
+           classColorMap.set(cls.id, classColorPalette[index % classColorPalette.length]);
+         });
 
          // Header
          doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
@@ -326,16 +351,18 @@ export async function registerRoutes(
 
              if (dayExams.length > 0) {
                dayExams.forEach((e) => {
-                 const isExam = e.type === 'EXAM';
                  const margin = 2;
                  const boxHeight = cellHeight - (margin * 2);
                  const boxWidth = periodColWidth - (margin * 2);
                  
-                 // Rounded box for exam
-                 doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
-                    .fillAndStroke(isExam ? colors.examBg : colors.quizBg, isExam ? colors.examBorder : colors.quizBorder);
+                 // Get class-specific color
+                 const classColor = classColorMap.get(e.classId) || classColorPalette[0];
                  
-                 doc.fillColor(isExam ? colors.examText : colors.quizText);
+                 // Rounded box for exam with class color
+                 doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
+                    .fillAndStroke(classColor.bg, classColor.border);
+                 
+                 doc.fillColor(classColor.text);
                  
                  // Subject code
                  doc.fontSize(7).font('Helvetica-Bold')
