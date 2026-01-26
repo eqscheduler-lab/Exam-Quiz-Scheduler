@@ -1,9 +1,9 @@
 import { db } from "./db";
 import {
-  users, subjects, students, examEvents, settings, classes,
-  type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class
+  users, subjects, students, examEvents, settings, classes, loginAudit,
+  type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class, type LoginAudit, type InsertLoginAudit
 } from "@shared/schema";
-import { eq, and, count, gte, lte } from "drizzle-orm";
+import { eq, and, count, gte, lte, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -43,6 +43,13 @@ export interface IStorage {
   
   // Settings
   getSettings(): Promise<typeof settings.$inferSelect | undefined>;
+  
+  // Login Audit
+  createLoginAudit(audit: InsertLoginAudit): Promise<LoginAudit>;
+  getLoginAuditLogs(): Promise<(LoginAudit & { user: User })[]>;
+  
+  // Analytics
+  getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -183,6 +190,64 @@ export class DatabaseStorage implements IStorage {
   async getSettings(): Promise<typeof settings.$inferSelect | undefined> {
     const [setting] = await db.select().from(settings).limit(1);
     return setting;
+  }
+
+  async createLoginAudit(audit: InsertLoginAudit): Promise<LoginAudit> {
+    const [newAudit] = await db.insert(loginAudit).values(audit).returning();
+    return newAudit;
+  }
+
+  async getLoginAuditLogs(): Promise<(LoginAudit & { user: User })[]> {
+    const results = await db.select({
+      loginAudit: loginAudit,
+      users: users
+    })
+    .from(loginAudit)
+    .innerJoin(users, eq(loginAudit.userId, users.id))
+    .orderBy(desc(loginAudit.loginAt))
+    .limit(500);
+
+    return results.map(r => ({
+      ...r.loginAudit,
+      user: r.users
+    }));
+  }
+
+  async getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }[]> {
+    const allExams = await db.select({
+      exam: examEvents,
+      class: classes,
+      subject: subjects
+    })
+    .from(examEvents)
+    .innerJoin(classes, eq(examEvents.classId, classes.id))
+    .innerJoin(subjects, eq(examEvents.subjectId, subjects.id))
+    .where(eq(examEvents.status, "SCHEDULED"));
+
+    // Aggregate by class and subject
+    const statsMap = new Map<string, { classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }>();
+    
+    for (const row of allExams) {
+      const key = `${row.class.id}-${row.subject.id}`;
+      if (!statsMap.has(key)) {
+        statsMap.set(key, {
+          classId: row.class.id,
+          className: row.class.name,
+          subjectId: row.subject.id,
+          subjectName: row.subject.name,
+          examCount: 0,
+          quizCount: 0
+        });
+      }
+      const stat = statsMap.get(key)!;
+      if (row.exam.type === "EXAM") {
+        stat.examCount++;
+      } else {
+        stat.quizCount++;
+      }
+    }
+
+    return Array.from(statsMap.values()).sort((a, b) => a.className.localeCompare(b.className));
   }
 }
 

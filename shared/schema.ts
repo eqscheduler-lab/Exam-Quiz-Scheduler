@@ -112,6 +112,16 @@ export const settings = pgTable("settings", {
   maxExamsPerDay: integer("max_exams_per_day").default(2).notNull(),
 });
 
+export const loginAudit = pgTable("login_audit", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  username: text("username").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  loginAt: timestamp("login_at").defaultNow().notNull(),
+  success: boolean("success").default(true).notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertClassSchema = createInsertSchema(classes).omit({ id: true });
@@ -119,6 +129,7 @@ export const insertSubjectSchema = createInsertSchema(subjects).omit({ id: true 
 export const insertStudentSchema = createInsertSchema(students).omit({ id: true });
 export const insertExamEventSchema = createInsertSchema(examEvents).omit({ id: true, createdAt: true });
 export const insertSettingsSchema = createInsertSchema(settings).omit({ id: true });
+export const insertLoginAuditSchema = createInsertSchema(loginAudit).omit({ id: true, loginAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -130,3 +141,5 @@ export type Student = typeof students.$inferSelect;
 export type ExamEvent = typeof examEvents.$inferSelect;
 export type InsertExamEvent = z.infer<typeof insertExamEventSchema>;
 export type Settings = typeof settings.$inferSelect;
+export type LoginAudit = typeof loginAudit.$inferSelect;
+export type InsertLoginAudit = z.infer<typeof insertLoginAuditSchema>;
