@@ -57,7 +57,7 @@ export default function MyExamsPage() {
            </div>
         ) : (
           <div className="grid gap-4">
-            {exams.map((exam) => (
+            {exams.map((exam: any) => (
               <Card key={exam.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6 flex items-center justify-between">
                   <div className="flex gap-6 items-center">

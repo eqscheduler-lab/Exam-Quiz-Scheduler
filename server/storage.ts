@@ -40,6 +40,7 @@ export interface IStorage {
   createExam(exam: InsertExamEvent): Promise<ExamEvent>;
   updateExam(id: number, exam: Partial<InsertExamEvent>): Promise<ExamEvent>;
   getExamCountForClassDay(date: Date, classId: number): Promise<number>;
+  getQuizCountForClassDay(date: Date, classId: number): Promise<number>;
   
   // Settings
   getSettings(): Promise<typeof settings.$inferSelect | undefined>;
@@ -189,6 +190,25 @@ export class DatabaseStorage implements IStorage {
         lte(examEvents.date, endOfDay),
         eq(examEvents.classId, classId),
         eq(examEvents.status, "SCHEDULED")
+      ));
+    
+    return Number(result.count);
+  }
+
+  async getQuizCountForClassDay(date: Date, classId: number): Promise<number> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const [result] = await db.select({ count: count() })
+      .from(examEvents)
+      .where(and(
+        gte(examEvents.date, startOfDay),
+        lte(examEvents.date, endOfDay),
+        eq(examEvents.classId, classId),
+        eq(examEvents.status, "SCHEDULED"),
+        eq(examEvents.type, "QUIZ")
       ));
     
     return Number(result.count);

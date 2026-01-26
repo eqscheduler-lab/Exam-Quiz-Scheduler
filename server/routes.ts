@@ -49,11 +49,14 @@ export async function registerRoutes(
         });
       }
 
-      const count = await storage.getExamCountForClassDay(date, input.classId);
-      if (count >= 2) {
-        return res.status(400).json({ 
-            message: "The maximum number of exams is reached, please choose another day to conduct your exam." 
-        });
+      // Only quizzes are limited to 1 per day per class; homework has no limit
+      if (input.type === "QUIZ") {
+        const quizCount = await storage.getQuizCountForClassDay(date, input.classId);
+        if (quizCount >= 1) {
+          return res.status(400).json({ 
+              message: "Only one quiz is allowed per class per day. Please choose another day." 
+          });
+        }
       }
       
       const user = req.user as any;
