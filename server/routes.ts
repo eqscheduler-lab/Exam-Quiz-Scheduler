@@ -384,7 +384,7 @@ export async function registerRoutes(
                     .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
                  
                  const creatorLastName = e.creator.name.split(' ').pop();
-                 doc.text(`Mr. ${creatorLastName}`, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                 doc.text(creatorLastName, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
                });
              }
            }
