@@ -310,16 +310,16 @@ export async function registerRoutes(
   });
 
   // === SEED DATA ===
-  const adminHash = await bcrypt.hash("Man@4546161", 10);
-  const admin2Hash = await bcrypt.hash("Staff@123", 10);
+  const adminHash = "$2b$10$015j/4cqjttGWY2Aye566uHgwKwJYtLnJsRJONz4Lvah1DRYzXl9S";
+  const admin2Hash = "$2b$10$OilJStER2q/BF9nxDEfovOiTMrpiMh0V9WV.d/limvYb2z1JFVnIe";
   
   // Force update admin passwords on start to ensure they work
   const adminUser = await storage.getUserByUsername("admin");
   if (adminUser) {
-    console.log("Found admin user, updating password...");
+    console.log("Found admin user, updating password with known hash...");
     await storage.updateUser(adminUser.id, { password: adminHash });
   } else {
-    console.log("Admin user not found, creating...");
+    console.log("Admin user not found, creating with known hash...");
     await storage.createUser({
       username: "admin",
       password: adminHash,
@@ -332,10 +332,10 @@ export async function registerRoutes(
 
   const admin2User = await storage.getUserByUsername("admin2");
   if (admin2User) {
-    console.log("Found admin2 user, updating password...");
+    console.log("Found admin2 user, updating password with known hash...");
     await storage.updateUser(admin2User.id, { password: admin2Hash });
   } else {
-    console.log("Admin2 user not found, creating...");
+    console.log("Admin2 user not found, creating with known hash...");
     await storage.createUser({
       username: "admin2",
       password: admin2Hash,
