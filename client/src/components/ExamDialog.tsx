@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { format } from "date-fns";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { format, isSameDay } from "date-fns";
+import { CalendarIcon, Loader2, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -78,17 +78,19 @@ export function ExamDialog({
   const { data: subjects } = useSubjects();
   const { data: classes } = useQuery<Class[]>({ queryKey: ["/api/classes"] });
   
-  // Fetch existing exams for the selected date to check limits (client-side pre-check)
-  const { data: existingExams } = useExams(
-    initialDate ? { weekStart: initialDate.toISOString() } : undefined
-  );
+  // Convert date string to Date object if needed
+  const parseDate = (date: any): Date => {
+    if (!date) return new Date();
+    if (date instanceof Date) return date;
+    return new Date(date);
+  };
 
   const form = useForm<ExamFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: defaultValues?.title || "",
       type: defaultValues?.type || "HOMEWORK",
-      date: initialDate || defaultValues?.date || new Date(),
+      date: parseDate(initialDate || defaultValues?.date),
       period: initialPeriod || defaultValues?.period || 1,
       classId: initialClassId || defaultValues?.classId || undefined,
       subjectId: defaultValues?.subjectId || undefined,
@@ -97,6 +99,54 @@ export function ExamDialog({
       createdByUserId: user?.id,
     },
   });
+
+  // Reset form when dialog opens with new values (for edit mode)
+  useEffect(() => {
+    if (open && mode === "edit" && defaultValues) {
+      form.reset({
+        title: defaultValues.title || "",
+        type: defaultValues.type || "HOMEWORK",
+        date: parseDate(defaultValues.date),
+        period: defaultValues.period || 1,
+        classId: defaultValues.classId || undefined,
+        subjectId: defaultValues.subjectId || undefined,
+        status: "SCHEDULED",
+        notes: defaultValues.notes || "",
+        createdByUserId: user?.id,
+      });
+    }
+  }, [open, mode, defaultValues, form, user?.id]);
+
+  // Watch form values for quiz availability check
+  const watchedDate = form.watch("date");
+  const watchedClassId = form.watch("classId");
+  const watchedType = form.watch("type");
+
+  // Fetch existing exams for the selected date to check quiz limits
+  const { data: existingExams } = useExams(
+    watchedDate ? { weekStart: watchedDate.toISOString() } : undefined
+  );
+
+  // Check if a quiz already exists for this class on this day
+  const quizAlreadyBooked = useMemo(() => {
+    if (!existingExams || !watchedDate || !watchedClassId) return false;
+    
+    const selectedDate = parseDate(watchedDate);
+    const existingQuizzes = existingExams.filter((exam: any) => {
+      // Skip the current exam if we're editing
+      if (mode === "edit" && exam.id === examId) return false;
+      
+      const examDate = new Date(exam.date);
+      return (
+        exam.type === "QUIZ" &&
+        exam.classId === watchedClassId &&
+        isSameDay(examDate, selectedDate) &&
+        exam.status === "SCHEDULED"
+      );
+    });
+    
+    return existingQuizzes.length > 0;
+  }, [existingExams, watchedDate, watchedClassId, mode, examId]);
 
   const onSubmit = async (data: ExamFormValues) => {
     try {
@@ -130,10 +180,17 @@ export function ExamDialog({
           <DialogTitle>{mode === "create" ? "Schedule New Exam" : "Edit Exam Details"}</DialogTitle>
           <DialogDescription>
             {mode === "create" 
-              ? "Book a slot for an exam or quiz. Maximum 3 exams per day per class." 
+              ? "Book a slot for homework or quiz. Quizzes are limited to 1 per class per day." 
               : "Update exam details. Changes will notify relevant students."}
           </DialogDescription>
         </DialogHeader>
+
+        {quizAlreadyBooked && watchedType === "QUIZ" && (
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>A quiz is already scheduled for this class on this day. Choose Homework instead or select a different date/class.</span>
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -158,7 +215,7 @@ export function ExamDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
@@ -310,7 +367,7 @@ export function ExamDialog({
                 <FormItem>
                   <FormLabel>Notes (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Topics covered, allowed materials..." {...field} />
+                    <Textarea placeholder="Topics covered, allowed materials..." {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -318,7 +375,11 @@ export function ExamDialog({
             />
 
             <div className="flex justify-end pt-4">
-              <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+              <Button 
+                type="submit" 
+                disabled={isPending || (quizAlreadyBooked && watchedType === "QUIZ")} 
+                className="w-full sm:w-auto"
+              >
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {mode === "create" ? "Schedule Exam" : "Save Changes"}
               </Button>
