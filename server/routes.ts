@@ -237,9 +237,9 @@ export async function registerRoutes(
            margins: { top: 30, left: 30, right: 30, bottom: 30 }
          });
          
-         const extractionDate = format(new Date(), 'yyyy-MM-dd');
+         const scheduleWeekDate = format(weekStart, 'yyyy-MM-dd');
          res.setHeader('Content-Type', 'application/pdf');
-         res.setHeader('Content-Disposition', `attachment; filename="Exam Schedule ${extractionDate}.pdf"`);
+         res.setHeader('Content-Disposition', `attachment; filename="Exam Schedule ${scheduleWeekDate}.pdf"`);
          doc.pipe(res);
 
          // Helper for colors (modern palette)
