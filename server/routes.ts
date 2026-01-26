@@ -127,12 +127,15 @@ export async function registerRoutes(
   app.post("/api/admin/users", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
     try {
-      const data = insertUserSchema.parse(req.body);
+      // Parse without password - server sets default password
+      const createStaffSchema = insertUserSchema.omit({ password: true });
+      const data = createStaffSchema.parse(req.body);
       const hashedPassword = await bcrypt.hash("Staff123", 10);
       const user = await storage.createUser({ ...data, password: hashedPassword });
       res.status(201).json(user);
-    } catch (error) {
-      res.status(400).json(error);
+    } catch (error: any) {
+      console.error("Create user error:", error);
+      res.status(400).json({ message: error.message || "Failed to create user" });
     }
   });
 

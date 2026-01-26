@@ -37,6 +37,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { z } from "zod";
+
+// Schema for admin creating users - password is set by server
+const createStaffSchema = insertUserSchema.omit({ password: true });
+type CreateStaffData = z.infer<typeof createStaffSchema>;
 
 export default function ManageStaff() {
   const { toast } = useToast();
@@ -47,8 +52,8 @@ export default function ManageStaff() {
     queryKey: ["/api/users"],
   });
 
-  const form = useForm({
-    resolver: zodResolver(insertUserSchema),
+  const form = useForm<CreateStaffData>({
+    resolver: zodResolver(createStaffSchema),
     defaultValues: {
       username: "",
       name: "",
