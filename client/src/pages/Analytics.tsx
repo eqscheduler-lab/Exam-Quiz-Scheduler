@@ -1,9 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 interface AnalyticsData {
   classId: number;
@@ -15,10 +23,41 @@ interface AnalyticsData {
 }
 
 export default function Analytics() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  
   const { data: analytics, isLoading } = useQuery<AnalyticsData[]>({
     queryKey: ["/api/analytics"],
   });
 
+  const clearHistoryMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/admin/factory-reset");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/classes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subjects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "History cleared successfully" });
+      setIsClearDialogOpen(false);
+      setConfirmText("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to clear history", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const handleClearHistory = () => {
+    if (confirmText === "CLEAR ALL DATA") {
+      clearHistoryMutation.mutate();
+    }
+  };
+
+  const isAdmin = user?.role === "ADMIN";
   const totalExams = analytics?.reduce((sum, a) => sum + a.examCount, 0) || 0;
   const totalQuizzes = analytics?.reduce((sum, a) => sum + a.quizCount, 0) || 0;
   const uniqueClasses = new Set(analytics?.map(a => a.classId)).size;
@@ -45,13 +84,72 @@ export default function Analytics() {
   return (
     <Layout title="System Analytics">
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="w-6 h-6 text-primary" />
-          <div>
-            <h2 className="text-xl font-bold font-display">System Analytics</h2>
-            <p className="text-muted-foreground text-sm">Overview of exams and quizzes conducted</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-6 h-6 text-primary" />
+            <div>
+              <h2 className="text-xl font-bold font-display">System Analytics</h2>
+              <p className="text-muted-foreground text-sm">Overview of homework and quizzes conducted</p>
+            </div>
           </div>
+          
+          {isAdmin && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => setIsClearDialogOpen(true)}
+              data-testid="button-clear-history"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Clear History
+            </Button>
+          )}
         </div>
+
+        <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Clear All History
+              </DialogTitle>
+              <DialogDescription>
+                This action will permanently delete all data including homework, quizzes, subjects, classes, and non-admin users. Admin accounts will be preserved.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                <p className="text-sm text-destructive font-medium">This action cannot be undone!</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Type <span className="font-mono font-bold">CLEAR ALL DATA</span> to confirm</Label>
+                <Input
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="Type confirmation text..."
+                  data-testid="input-confirm-clear"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setIsClearDialogOpen(false); setConfirmText(""); }}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleClearHistory}
+                disabled={confirmText !== "CLEAR ALL DATA" || clearHistoryMutation.isPending}
+                data-testid="button-confirm-clear"
+              >
+                {clearHistoryMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Clearing...</>
+                ) : (
+                  "Clear All Data"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
