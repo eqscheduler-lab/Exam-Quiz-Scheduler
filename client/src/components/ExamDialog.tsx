@@ -191,7 +191,7 @@ export function ExamDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {subjects?.map((subject) => (
+                        {[...(subjects || [])].sort((a, b) => a.name.localeCompare(b.name)).map((subject) => (
                           <SelectItem key={subject.id} value={subject.id.toString()}>
                             {subject.name} ({subject.code})
                           </SelectItem>

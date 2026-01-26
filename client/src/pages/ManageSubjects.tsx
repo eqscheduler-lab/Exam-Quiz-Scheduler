@@ -233,7 +233,7 @@ export default function ManageSubjects() {
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-8">Loading subjects...</TableCell>
                 </TableRow>
-              ) : subjects?.map((subject) => (
+              ) : [...(subjects || [])].sort((a, b) => a.name.localeCompare(b.name)).map((subject) => (
                 <TableRow key={subject.id}>
                   <TableCell className="font-mono font-bold text-primary">{subject.code}</TableCell>
                   <TableCell className="font-medium">{subject.name}</TableCell>
