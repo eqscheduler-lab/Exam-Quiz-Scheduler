@@ -50,7 +50,7 @@ export interface IStorage {
   getLoginAuditLogs(): Promise<(LoginAudit & { user: User })[]>;
   
   // Analytics
-  getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }[]>;
+  getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; subjectCode: string; examCount: number; quizCount: number }[]>;
   getTeacherAnalytics(): Promise<{ teacherId: number; teacherName: string; classId: number; className: string; homeworkCount: number; quizCount: number }[]>;
   
   // Factory Reset
@@ -241,7 +241,7 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }[]> {
+  async getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; subjectCode: string; examCount: number; quizCount: number }[]> {
     const allExams = await db.select({
       exam: examEvents,
       class: classes,
@@ -253,7 +253,7 @@ export class DatabaseStorage implements IStorage {
     .where(eq(examEvents.status, "SCHEDULED"));
 
     // Aggregate by class and subject
-    const statsMap = new Map<string, { classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }>();
+    const statsMap = new Map<string, { classId: number; className: string; subjectId: number; subjectName: string; subjectCode: string; examCount: number; quizCount: number }>();
     
     for (const row of allExams) {
       const key = `${row.class.id}-${row.subject.id}`;
@@ -263,6 +263,7 @@ export class DatabaseStorage implements IStorage {
           className: row.class.name,
           subjectId: row.subject.id,
           subjectName: row.subject.name,
+          subjectCode: row.subject.code,
           examCount: 0,
           quizCount: 0
         });

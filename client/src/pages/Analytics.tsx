@@ -28,6 +28,7 @@ interface AnalyticsData {
   className: string;
   subjectId: number;
   subjectName: string;
+  subjectCode: string;
   examCount: number;
   quizCount: number;
 }
@@ -98,12 +99,12 @@ export default function Analytics() {
 
   const subjectSummary = analytics?.reduce((acc, a) => {
     if (!acc[a.subjectId]) {
-      acc[a.subjectId] = { subjectName: a.subjectName, exams: 0, quizzes: 0 };
+      acc[a.subjectId] = { subjectName: a.subjectName, subjectCode: a.subjectCode, exams: 0, quizzes: 0 };
     }
     acc[a.subjectId].exams += a.examCount;
     acc[a.subjectId].quizzes += a.quizCount;
     return acc;
-  }, {} as Record<number, { subjectName: string; exams: number; quizzes: number }>);
+  }, {} as Record<number, { subjectName: string; subjectCode: string; exams: number; quizzes: number }>);
 
   const pieChartData = [
     { name: "Homework", value: totalExams, color: COLORS.homework },
@@ -119,9 +120,9 @@ export default function Analytics() {
     })) : [];
 
   const subjectChartData = subjectSummary ? Object.entries(subjectSummary)
-    .sort((a, b) => a[1].subjectName.localeCompare(b[1].subjectName))
+    .sort((a, b) => a[1].subjectCode.localeCompare(b[1].subjectCode))
     .map(([_, data]) => ({
-      name: data.subjectName,
+      name: data.subjectCode,
       Homework: data.exams,
       Quizzes: data.quizzes
     })) : [];
@@ -446,12 +447,12 @@ export default function Analytics() {
               </Card>
             </div>
 
-            {/* Subject Chart */}
+            {/* Course Code Chart */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BookOpen className="w-5 h-5" />
-                  By Subject - Chart
+                  By Course Code - Chart
                 </CardTitle>
               </CardHeader>
               <CardContent>
