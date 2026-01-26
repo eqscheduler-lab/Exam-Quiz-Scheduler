@@ -106,7 +106,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right">
                       <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold ${
-                        exam.type === 'EXAM' 
+                        exam.type === 'HOMEWORK' 
                           ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
                           : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                       }`}>

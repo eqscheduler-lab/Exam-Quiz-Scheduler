@@ -67,8 +67,8 @@ export default function Analytics() {
                       <FileText className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Exams</p>
-                      <p className="text-2xl font-bold" data-testid="text-total-exams">{totalExams}</p>
+                      <p className="text-sm text-muted-foreground">Total Homework</p>
+                      <p className="text-2xl font-bold" data-testid="text-total-homework">{totalExams}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -127,7 +127,7 @@ export default function Analytics() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Class</TableHead>
-                        <TableHead className="text-right">Exams</TableHead>
+                        <TableHead className="text-right">Homework</TableHead>
                         <TableHead className="text-right">Quizzes</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
@@ -171,7 +171,7 @@ export default function Analytics() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Subject</TableHead>
-                        <TableHead className="text-right">Exams</TableHead>
+                        <TableHead className="text-right">Homework</TableHead>
                         <TableHead className="text-right">Quizzes</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
@@ -214,7 +214,7 @@ export default function Analytics() {
                     <TableRow>
                       <TableHead>Class</TableHead>
                       <TableHead>Subject</TableHead>
-                      <TableHead className="text-right">Exams</TableHead>
+                      <TableHead className="text-right">Homework</TableHead>
                       <TableHead className="text-right">Quizzes</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -230,7 +230,7 @@ export default function Analytics() {
                     {(!analytics || analytics.length === 0) && (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                          No exams or quizzes have been scheduled yet
+                          No homework or quizzes have been scheduled yet
                         </TableCell>
                       </TableRow>
                     )}

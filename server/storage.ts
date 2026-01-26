@@ -243,7 +243,7 @@ export class DatabaseStorage implements IStorage {
         });
       }
       const stat = statsMap.get(key)!;
-      if (row.exam.type === "EXAM") {
+      if (row.exam.type === "HOMEWORK") {
         stat.examCount++;
       } else {
         stat.quizCount++;

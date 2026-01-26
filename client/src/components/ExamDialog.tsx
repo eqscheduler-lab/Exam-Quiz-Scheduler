@@ -87,7 +87,7 @@ export function ExamDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: defaultValues?.title || "",
-      type: defaultValues?.type || "EXAM",
+      type: defaultValues?.type || "HOMEWORK",
       date: initialDate || defaultValues?.date || new Date(),
       period: initialPeriod || defaultValues?.period || 1,
       classId: initialClassId || defaultValues?.classId || undefined,

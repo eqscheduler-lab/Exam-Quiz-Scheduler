@@ -58,7 +58,7 @@ export default function MyExamsPage() {
                         </div>
                         <span className={cn(
                           "px-2 py-0.5 rounded-full text-xs font-medium",
-                          exam.type === 'EXAM' ? "bg-purple-100 text-purple-700" : "bg-amber-100 text-amber-700"
+                          exam.type === 'HOMEWORK' ? "bg-purple-100 text-purple-700" : "bg-amber-100 text-amber-700"
                         )}>
                           {exam.type}
                         </span>

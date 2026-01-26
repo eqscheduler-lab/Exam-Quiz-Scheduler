@@ -96,7 +96,7 @@ export default function SchedulePage() {
                 trigger={
                   <button className={cn(
                     "w-full text-left p-2 rounded-md text-xs border transition-all hover:scale-[1.02]",
-                    exam.type === 'EXAM' 
+                    exam.type === 'HOMEWORK' 
                       ? "bg-purple-100 border-purple-200 text-purple-900 hover:bg-purple-200 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-100" 
                       : "bg-amber-100 border-amber-200 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-100"
                   )}>

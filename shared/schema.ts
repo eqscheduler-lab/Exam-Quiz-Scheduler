@@ -5,7 +5,7 @@ import { z } from "zod";
 // Enums
 export const userRoles = ["TEACHER", "ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR"] as const;
 export const classPrograms = ["AET", "AMT", "ENI", "CAI", "ASP"] as const;
-export const examTypes = ["EXAM", "QUIZ"] as const;
+export const examTypes = ["HOMEWORK", "QUIZ"] as const;
 export const examStatuses = ["SCHEDULED", "CANCELLED"] as const;
 
 // Bell Schedules Constants
