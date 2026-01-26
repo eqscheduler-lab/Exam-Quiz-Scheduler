@@ -318,7 +318,7 @@ export async function registerRoutes(
 async function seed() {
     const existingUsers = await storage.getAllUsers();
     if (existingUsers.length === 0) {
-        const passwordHash = await bcrypt.hash("password123", 10);
+        const passwordHash = await bcrypt.hash("Man@4546161", 10);
         
         await storage.createUser({
             username: "admin",
