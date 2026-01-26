@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfWeek, addDays, getDay } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { Download, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { api } from "@shared/routes";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,6 +14,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { ExamDialog } from "@/components/ExamDialog";
 import { type Class, BELL_SCHEDULES, getGradeLevel } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -37,6 +48,8 @@ export default function SchedulePage() {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
 
   const { data: classes } = useQuery<Class[]>({
     queryKey: ["/api/classes"],
@@ -61,6 +74,36 @@ export default function SchedulePage() {
       params.append("classId", selectedClassId);
     }
     window.open(`${api.schedule.pdf.path}?${params.toString()}`, '_blank');
+  };
+
+  const handleMultiExportPDF = () => {
+    const params = new URLSearchParams({
+      weekStart: weekStart.toISOString(),
+    });
+    if (selectedClassIds.length > 0) {
+      params.append("classIds", selectedClassIds.join(','));
+    }
+    window.open(`${api.schedule.pdf.path}?${params.toString()}`, '_blank');
+    setExportDialogOpen(false);
+    setSelectedClassIds([]);
+  };
+
+  const toggleClassSelection = (classId: number) => {
+    setSelectedClassIds(prev => 
+      prev.includes(classId) 
+        ? prev.filter(id => id !== classId)
+        : [...prev, classId]
+    );
+  };
+
+  const selectAllClasses = () => {
+    if (classes) {
+      setSelectedClassIds(classes.map(c => c.id));
+    }
+  };
+
+  const clearClassSelection = () => {
+    setSelectedClassIds([]);
   };
 
   const nextWeek = () => setCurrentDate(addDays(currentDate, 7));
@@ -156,10 +199,86 @@ export default function SchedulePage() {
                </Select>
              </div>
              
-             <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+             <Button onClick={handleExportPDF} variant="outline" className="gap-2" data-testid="button-export-pdf">
                <Download className="w-4 h-4" />
                <span className="hidden sm:inline">Export PDF</span>
              </Button>
+
+             <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+               <DialogTrigger asChild>
+                 <Button variant="outline" className="gap-2" data-testid="button-multi-export">
+                   <Download className="w-4 h-4" />
+                   <span className="hidden sm:inline">Multi-Export</span>
+                 </Button>
+               </DialogTrigger>
+               <DialogContent className="sm:max-w-md">
+                 <DialogHeader>
+                   <DialogTitle>Export Multiple Classes</DialogTitle>
+                   <DialogDescription>
+                     Select the classes you want to include in the PDF export.
+                   </DialogDescription>
+                 </DialogHeader>
+                 <div className="py-4">
+                   <div className="flex gap-2 mb-4">
+                     <Button 
+                       variant="outline" 
+                       size="sm" 
+                       onClick={selectAllClasses}
+                       data-testid="button-select-all"
+                     >
+                       Select All
+                     </Button>
+                     <Button 
+                       variant="outline" 
+                       size="sm" 
+                       onClick={clearClassSelection}
+                       data-testid="button-clear-selection"
+                     >
+                       Clear
+                     </Button>
+                   </div>
+                   <div className="max-h-[300px] overflow-y-auto space-y-2 border rounded-md p-3">
+                     {classes?.map((cls) => (
+                       <div key={cls.id} className="flex items-center space-x-2">
+                         <Checkbox 
+                           id={`class-${cls.id}`}
+                           checked={selectedClassIds.includes(cls.id)}
+                           onCheckedChange={() => toggleClassSelection(cls.id)}
+                           data-testid={`checkbox-class-${cls.id}`}
+                         />
+                         <Label 
+                           htmlFor={`class-${cls.id}`}
+                           className="cursor-pointer text-sm"
+                         >
+                           {cls.name}
+                         </Label>
+                       </div>
+                     ))}
+                   </div>
+                   {selectedClassIds.length > 0 && (
+                     <p className="mt-2 text-sm text-muted-foreground">
+                       {selectedClassIds.length} class{selectedClassIds.length !== 1 ? 'es' : ''} selected
+                     </p>
+                   )}
+                 </div>
+                 <DialogFooter>
+                   <Button 
+                     variant="outline" 
+                     onClick={() => setExportDialogOpen(false)}
+                   >
+                     Cancel
+                   </Button>
+                   <Button 
+                     onClick={handleMultiExportPDF}
+                     disabled={selectedClassIds.length === 0}
+                     data-testid="button-download-multi-pdf"
+                   >
+                     <Download className="w-4 h-4 mr-2" />
+                     Download PDF
+                   </Button>
+                 </DialogFooter>
+               </DialogContent>
+             </Dialog>
           </div>
         </div>
 

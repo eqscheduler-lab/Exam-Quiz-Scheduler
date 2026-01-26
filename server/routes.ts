@@ -457,8 +457,19 @@ export async function registerRoutes(
          const weekStart = new Date(weekStartStr);
          const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
          const classId = req.query.classId ? Number(req.query.classId) : undefined;
+         const classIdsStr = req.query.classIds as string | undefined;
+         const classIds = classIdsStr ? classIdsStr.split(',').map(Number).filter(n => !isNaN(n)) : undefined;
          
-         const exams = await storage.getExams({ weekStart, weekEnd, classId });
+         // Fetch exams - if classIds provided, fetch for multiple classes
+         let exams;
+         if (classIds && classIds.length > 0) {
+           const examsArrays = await Promise.all(
+             classIds.map(cId => storage.getExams({ weekStart, weekEnd, classId: cId }))
+           );
+           exams = examsArrays.flat();
+         } else {
+           exams = await storage.getExams({ weekStart, weekEnd, classId });
+         }
          
          const doc = new PDFDocument({ 
            layout: 'landscape', 
@@ -517,9 +528,13 @@ export async function registerRoutes(
          doc.fontSize(12).fillColor(colors.secondary)
             .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
          
-         if (classId) {
-           const allClass = await storage.getAllClasses();
-           const cls = allClass.find(c => c.id === classId);
+         if (classIds && classIds.length > 0) {
+           const selectedClasses = allClasses.filter(c => classIds.includes(c.id));
+           const classNames = selectedClasses.map(c => c.name).join(', ');
+           doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
+              .text(`Classes: ${classNames}`, { align: 'center' });
+         } else if (classId) {
+           const cls = allClasses.find(c => c.id === classId);
            if (cls) {
              doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
                 .text(`Class: ${cls.name}`, { align: 'center' });

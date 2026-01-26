@@ -140,6 +140,7 @@ export const api = {
       input: z.object({
         weekStart: z.string(),
         classId: z.coerce.number().optional(),
+        classIds: z.string().optional(), // comma-separated list of class IDs
       }),
       responses: {
         200: z.any(),

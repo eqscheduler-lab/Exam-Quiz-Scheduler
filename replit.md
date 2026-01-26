@@ -45,6 +45,15 @@ Preferred communication style: Simple, everyday language.
    - Teachers: Create/manage their own exams, view schedules, cancel own bookings
    - Admins: Full access including user/subject/student management, bulk import
 
+### PDF Export Feature
+The Schedule page (`/schedule`) offers two export options:
+- **Single Export**: Exports the current view (all classes or filtered single class)
+- **Multi-Export**: Opens a dialog to select multiple classes at once for combined PDF export
+  - "Select All" to quickly select all classes
+  - "Clear" to deselect all classes
+  - Individual checkboxes for each class
+  - Downloaded PDF shows all selected classes with unique color coding
+
 ### Bulk Import Feature
 Admins can bulk import data using CSV files with downloadable templates:
 - **Staff Import** (`/admin/bulk-import`): Import teachers/coordinators/admins with columns: name, username, email, role. Default password: "Staff123"
