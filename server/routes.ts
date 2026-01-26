@@ -310,8 +310,10 @@ export async function registerRoutes(
   });
 
   // === SEED DATA ===
-  const adminHash = "$2b$10$015j/4cqjttGWY2Aye566uHgwKwJYtLnJsRJONz4Lvah1DRYzXl9S";
-  const admin2Hash = "$2b$10$OilJStER2q/BF9nxDEfovOiTMrpiMh0V9WV.d/limvYb2z1JFVnIe";
+  // Generate fresh hashes on each startup to ensure passwords work
+  const adminHash = await bcrypt.hash("Man@4546161", 10);
+  const admin2Hash = await bcrypt.hash("Staff@123", 10);
+  const staffDefaultHash = await bcrypt.hash("Staff123", 10);
   
   // Force update admin passwords on start to ensure they work
   const adminUser = await storage.getUserByUsername("admin");

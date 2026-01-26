@@ -41,14 +41,8 @@ export function setupAuth(app: Express) {
            return done(null, false, { message: "User account is inactive." });
         }
 
-        console.log(`Login attempt for: ${username}`);
-        // TEMP: Allow direct comparison for debugging if hash match fails
-        const isMatch = await bcrypt.compare(password, user.password) || 
-                       (username === "admin" && password === "Man@4546161") || 
-                       (username === "admin2" && password === "Staff@123");
-        console.log(`Password match for ${username}: ${isMatch}`);
+        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-          console.log(`Hash in DB: ${user.password}`);
           return done(null, false, { message: "Incorrect password." });
         }
 
