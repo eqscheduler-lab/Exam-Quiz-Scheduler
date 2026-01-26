@@ -10,11 +10,14 @@ import { format } from "date-fns";
 export default function Dashboard() {
   const { user } = useAuth();
   
-  // Fetch exams for today for the current user (if teacher) or all (if admin)
+  // Fetch exams for today for the current user (if teacher) or all (if admin/leadership)
   const today = new Date();
   const weekStart = format(today, "yyyy-MM-dd"); // Use a stable string for key
+  const isTeacher = user?.role === "TEACHER";
+  
   const { data: exams, isLoading } = useExams({
     weekStart: weekStart,
+    teacherId: isTeacher ? user?.id : undefined,
   });
 
   const todaysExams = exams?.filter(e => {
