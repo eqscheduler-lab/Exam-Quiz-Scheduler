@@ -328,10 +328,12 @@ async function seed() {
             email: "admin@school.com",
             isActive: true
         });
+
+        const coordHash = await bcrypt.hash("Staff123", 10);
         
         await storage.createUser({
             username: "coordinator",
-            password: passwordHash,
+            password: coordHash,
             role: "COORDINATOR",
             name: "Schedule Coordinator",
             email: "coord@school.com",
@@ -340,7 +342,7 @@ async function seed() {
 
         await storage.createUser({
             username: "principal",
-            password: passwordHash,
+            password: coordHash,
             role: "PRINCIPAL",
             name: "Principal Skinner",
             email: "principal@school.com",
@@ -349,7 +351,7 @@ async function seed() {
         
         await storage.createUser({
             username: "teacher1",
-            password: passwordHash,
+            password: coordHash,
             role: "TEACHER",
             name: "John Keating",
             email: "keating@school.com",
@@ -358,7 +360,7 @@ async function seed() {
         
         await storage.createUser({
             username: "teacher2",
-            password: passwordHash,
+            password: coordHash,
             role: "TEACHER",
             name: "Sherman Klump",
             email: "klump@school.com",
