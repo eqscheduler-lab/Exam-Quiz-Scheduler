@@ -217,7 +217,7 @@ export default function ManageStaff() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">Loading staff...</TableCell>
                 </TableRow>
-              ) : staff?.map((member) => (
+              ) : [...(staff || [])].sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0)).map((member) => (
                 <TableRow key={member.id}>
                   <TableCell className="font-medium">{member.name}</TableCell>
                   <TableCell>{member.username}</TableCell>
