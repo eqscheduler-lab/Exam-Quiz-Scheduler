@@ -12,6 +12,15 @@ import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, T
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from "recharts";
+
+const COLORS = {
+  homework: "#9333ea",
+  quiz: "#f59e0b"
+};
 
 interface AnalyticsData {
   classId: number;
@@ -80,6 +89,27 @@ export default function Analytics() {
     acc[a.subjectId].quizzes += a.quizCount;
     return acc;
   }, {} as Record<number, { subjectName: string; exams: number; quizzes: number }>);
+
+  const pieChartData = [
+    { name: "Homework", value: totalExams, color: COLORS.homework },
+    { name: "Quizzes", value: totalQuizzes, color: COLORS.quiz }
+  ].filter(d => d.value > 0);
+
+  const classChartData = classSummary ? Object.entries(classSummary)
+    .sort((a, b) => a[1].className.localeCompare(b[1].className))
+    .map(([_, data]) => ({
+      name: data.className,
+      Homework: data.exams,
+      Quizzes: data.quizzes
+    })) : [];
+
+  const subjectChartData = subjectSummary ? Object.entries(subjectSummary)
+    .sort((a, b) => a[1].subjectName.localeCompare(b[1].subjectName))
+    .map(([_, data]) => ({
+      name: data.subjectName,
+      Homework: data.exams,
+      Quizzes: data.quizzes
+    })) : [];
 
   return (
     <Layout title="System Analytics">
@@ -212,12 +242,77 @@ export default function Analytics() {
               </Card>
             </div>
 
+            {/* Overview Pie Chart */}
+            {pieChartData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Distribution Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Class Chart and Table */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <GraduationCap className="w-5 h-5" />
-                    By Class
+                    By Class - Chart
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {classChartData.length > 0 ? (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={classChartData} layout="vertical" margin={{ left: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                          <Tooltip />
+                          <Legend />
+                          <Bar dataKey="Homework" fill={COLORS.homework} />
+                          <Bar dataKey="Quizzes" fill={COLORS.quiz} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">No data available</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5" />
+                    By Class - Table
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -261,7 +356,7 @@ export default function Analytics() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5" />
-                    By Subject
+                    By Subject - Table
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -301,6 +396,35 @@ export default function Analytics() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Subject Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  By Subject - Chart
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {subjectChartData.length > 0 ? (
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={subjectChartData} margin={{ bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="Homework" fill={COLORS.homework} />
+                        <Bar dataKey="Quizzes" fill={COLORS.quiz} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No data available</p>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
