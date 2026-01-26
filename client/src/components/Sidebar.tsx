@@ -9,7 +9,9 @@ import {
   GraduationCap,
   Lock,
   BarChart3,
-  Shield
+  Shield,
+  RotateCcw,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -33,6 +35,9 @@ export function Sidebar() {
   const { toast } = useToast();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordData, setPasswordData] = useState({ current: "", new: "", confirm: "" });
+  const [isFactoryResetOpen, setIsFactoryResetOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
   
   if (!user) return null;
 

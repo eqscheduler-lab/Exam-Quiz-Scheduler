@@ -50,6 +50,9 @@ export interface IStorage {
   
   // Analytics
   getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; examCount: number; quizCount: number }[]>;
+  
+  // Factory Reset
+  factoryReset(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -248,6 +251,19 @@ export class DatabaseStorage implements IStorage {
     }
 
     return Array.from(statsMap.values()).sort((a, b) => a.className.localeCompare(b.className));
+  }
+
+  async factoryReset(): Promise<void> {
+    // Delete all data in order to respect foreign key constraints
+    await db.delete(loginAudit);
+    await db.delete(examEvents);
+    await db.delete(subjects);
+    await db.delete(classes);
+    // Delete non-admin users only, keep admin accounts
+    await db.delete(users).where(eq(users.role, "TEACHER"));
+    await db.delete(users).where(eq(users.role, "COORDINATOR"));
+    await db.delete(users).where(eq(users.role, "PRINCIPAL"));
+    await db.delete(users).where(eq(users.role, "VICE_PRINCIPAL"));
   }
 }
 

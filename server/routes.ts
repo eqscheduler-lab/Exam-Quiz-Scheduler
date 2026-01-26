@@ -208,6 +208,18 @@ export async function registerRoutes(
     }
   });
 
+  // Factory Reset - Admin Only
+  app.post("/api/admin/factory-reset", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      await storage.factoryReset();
+      res.json({ message: "Factory reset complete" });
+    } catch (error: any) {
+      console.error("Factory reset error:", error);
+      res.status(500).json({ message: error.message || "Failed to reset" });
+    }
+  });
+
   app.post("/api/user/change-password", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { currentPassword, newPassword } = req.body;
