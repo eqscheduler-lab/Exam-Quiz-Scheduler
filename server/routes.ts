@@ -139,6 +139,23 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/admin/users/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const userId = parseInt(req.params.id);
+      // Don't allow deleting yourself
+      if (userId === (req.user as any).id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      // Deactivate user instead of deleting to preserve data integrity
+      await storage.updateUser(userId, { isActive: false });
+      res.sendStatus(200);
+    } catch (error: any) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: error.message || "Failed to delete user" });
+    }
+  });
+
   app.post("/api/user/change-password", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { currentPassword, newPassword } = req.body;

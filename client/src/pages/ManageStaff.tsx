@@ -83,6 +83,27 @@ export default function ManageStaff() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to deactivate user");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Success", description: "Staff member deactivated" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to deactivate staff member", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   return (
     <Layout title="Staff Management">
       <div className="space-y-6">
@@ -212,7 +233,14 @@ export default function ManageStaff() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteMutation.mutate(member.id)}
+                      disabled={deleteMutation.isPending}
+                      data-testid={`button-delete-user-${member.id}`}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </TableCell>
