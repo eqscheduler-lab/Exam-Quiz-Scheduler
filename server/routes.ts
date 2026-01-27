@@ -524,7 +524,7 @@ export async function registerRoutes(
          const drawSchedulePage = async (targetClassId: number | undefined, className: string, exams: any[]) => {
            // Header
            doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
-              .text('Exam & Quiz Schedule', { align: 'center' });
+              .text('HW & Quiz Schedule', { align: 'center' });
            doc.fontSize(12).fillColor(colors.secondary)
               .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
            
@@ -641,7 +641,7 @@ export async function registerRoutes(
            
            // Header
            doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
-              .text('Exam & Quiz Schedule', { align: 'center' });
+              .text('HW & Quiz Schedule', { align: 'center' });
            doc.fontSize(12).fillColor(colors.secondary)
               .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
            doc.moveDown(0.5).fontSize(14).fillColor(colors.primary)
