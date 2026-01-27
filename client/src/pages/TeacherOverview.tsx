@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useExams } from "@/hooks/use-exams";
 import { User, ExamEvent, Subject, Class } from "@shared/schema";
-import { Users, BookOpen, FileText, ChevronRight, ArrowLeft, Calendar } from "lucide-react";
-import { format } from "date-fns";
+import { Users, BookOpen, FileText, ChevronRight, ArrowLeft, Calendar, Download } from "lucide-react";
+import { format, startOfWeek } from "date-fns";
 
 type ExamWithDetails = ExamEvent & { subject: Subject; creator: User; class: Class };
 
@@ -45,15 +45,28 @@ export default function TeacherOverview() {
             Back to Teachers
           </Button>
 
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl">
-              {selectedTeacher.name.charAt(0)}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-2xl">
+                {selectedTeacher.name.charAt(0)}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold font-display">{selectedTeacher.name}</h2>
+                <p className="text-muted-foreground">{selectedTeacher.email}</p>
+                <Badge variant="secondary" className="mt-1">{selectedTeacher.role}</Badge>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold font-display">{selectedTeacher.name}</h2>
-              <p className="text-muted-foreground">{selectedTeacher.email}</p>
-              <Badge variant="secondary" className="mt-1">{selectedTeacher.role}</Badge>
-            </div>
+            <Button
+              onClick={() => {
+                const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+                const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+                window.open(`/api/schedule/teacher-pdf?weekStart=${weekStartStr}&teacherId=${selectedTeacher.id}`, '_blank');
+              }}
+              data-testid="button-download-teacher-pdf"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

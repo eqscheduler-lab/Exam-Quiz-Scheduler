@@ -734,6 +734,168 @@ export async function registerRoutes(
      }
   });
 
+  // === TEACHER PDF EXPORT ===
+  app.get("/api/schedule/teacher-pdf", async (req, res) => {
+     try {
+         const weekStartStr = req.query.weekStart as string;
+         const teacherId = req.query.teacherId ? Number(req.query.teacherId) : undefined;
+         const weekStart = new Date(weekStartStr);
+         const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+         
+         if (!teacherId) {
+           return res.status(400).send("Teacher ID required");
+         }
+
+         const teacher = await storage.getUser(teacherId);
+         if (!teacher) {
+           return res.status(404).send("Teacher not found");
+         }
+         
+         const doc = new PDFDocument({ 
+           layout: 'landscape', 
+           size: 'A4',
+           margins: { top: 30, left: 30, right: 30, bottom: 30 }
+         });
+         
+         const scheduleWeekDate = format(weekStart, 'yyyy-MM-dd');
+         res.setHeader('Content-Type', 'application/pdf');
+         res.setHeader('Content-Disposition', `attachment; filename="${teacher.name} Schedule ${scheduleWeekDate}.pdf"`);
+         doc.pipe(res);
+
+         const colors = {
+           primary: '#0f172a',
+           secondary: '#64748b',
+           border: '#e2e8f0',
+           mutedBg: '#f8fafc'
+         };
+
+         const classColorPalette = [
+           { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
+           { bg: '#dcfce7', border: '#22c55e', text: '#166534' },
+           { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+           { bg: '#fce7f3', border: '#ec4899', text: '#9d174d' },
+           { bg: '#e0e7ff', border: '#6366f1', text: '#3730a3' },
+           { bg: '#ccfbf1', border: '#14b8a6', text: '#115e59' },
+           { bg: '#fed7aa', border: '#f97316', text: '#9a3412' },
+           { bg: '#f5d0fe', border: '#d946ef', text: '#86198f' },
+           { bg: '#cffafe', border: '#06b6d4', text: '#155e75' },
+           { bg: '#fecaca', border: '#ef4444', text: '#991b1b' },
+         ];
+
+         const allClasses = await storage.getAllClasses();
+         const sortedClasses = [...allClasses].sort((a, b) => a.name.localeCompare(b.name));
+         const classColorMap = new Map<number, typeof classColorPalette[0]>();
+         sortedClasses.forEach((cls, index) => {
+           classColorMap.set(cls.id, classColorPalette[index % classColorPalette.length]);
+         });
+
+         // Get all exams for this teacher in the week
+         const allExams = await storage.getExams({ weekStart, weekEnd });
+         const teacherExams = allExams.filter(e => e.createdByUserId === teacherId);
+
+         const startX = 40;
+         const startY = 130;
+         const tableWidth = doc.page.width - 80;
+         const dayColWidth = 100;
+         const periodColWidth = (tableWidth - dayColWidth) / 8;
+         const cellHeight = 70;
+         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+         // Header
+         doc.font('Helvetica-Bold').fontSize(24).fillColor(colors.primary)
+            .text(`${teacher.name}'s Schedule`, { align: 'center' });
+         doc.fontSize(12).fillColor(colors.secondary)
+            .text(`${format(weekStart, 'MMMM d')} - ${format(weekEnd, 'MMMM d, yyyy')}`, { align: 'center' });
+         doc.moveDown(0.5).fontSize(11).fillColor(colors.primary)
+            .text(`Total: ${teacherExams.filter(e => e.type === 'HOMEWORK').length} Homework, ${teacherExams.filter(e => e.type === 'QUIZ').length} Quizzes`, { align: 'center' });
+         doc.moveDown(1);
+
+         // Draw Header (Periods)
+         doc.font('Helvetica-Bold').fontSize(10).fillColor(colors.primary);
+         for (let p = 1; p <= 8; p++) {
+           const x = startX + dayColWidth + ((p - 1) * periodColWidth);
+           doc.text(`P${p}`, x, startY - 20, { width: periodColWidth, align: 'center' });
+           doc.font('Helvetica').fontSize(7).fillColor(colors.secondary)
+              .text('PERIOD', x, startY - 10, { width: periodColWidth, align: 'center' });
+         }
+
+         // Draw Grid and Content
+         days.forEach((day, i) => {
+           const y = startY + (i * cellHeight);
+           const date = addDays(weekStart, i);
+           const isFri = day === 'Friday';
+           
+           doc.font('Helvetica-Bold').fontSize(11).fillColor(colors.primary)
+              .text(day.toUpperCase(), startX, y + cellHeight/2 - 10, { width: dayColWidth });
+           doc.font('Helvetica').fontSize(8).fillColor(colors.secondary)
+              .text(format(date, 'MMM d'), startX, y + cellHeight/2 + 2, { width: dayColWidth });
+
+           for (let p = 1; p <= 8; p++) {
+             const x = startX + dayColWidth + ((p - 1) * periodColWidth);
+             
+             doc.rect(x, y, periodColWidth, cellHeight).strokeColor(colors.border).lineWidth(0.5).stroke();
+             
+             if (isFri && p > 4) {
+               doc.rect(x + 0.5, y + 0.5, periodColWidth - 1, cellHeight - 1).fill(colors.mutedBg);
+               return;
+             }
+
+             const dateStr = format(date, 'yyyy-MM-dd');
+             const dayExams = teacherExams.filter(e => {
+               const examDateStr = format(new Date(e.date), 'yyyy-MM-dd');
+               return examDateStr === dateStr && e.period === p;
+             });
+
+             if (dayExams.length > 0) {
+               const numExams = dayExams.length;
+               dayExams.forEach((e, examIndex) => {
+                 const margin = 2;
+                 const totalHeight = cellHeight - (margin * 2);
+                 const boxHeight = numExams > 1 ? (totalHeight / numExams) - 1 : totalHeight;
+                 const boxWidth = periodColWidth - (margin * 2);
+                 const yOffset = examIndex * (boxHeight + 1);
+                 const classColor = classColorMap.get(e.classId) || classColorPalette[0];
+                 
+                 doc.roundedRect(x + margin, y + margin + yOffset, boxWidth, boxHeight, 3)
+                    .fillAndStroke(classColor.bg, classColor.border);
+                 
+                 doc.fillColor(classColor.text);
+                 
+                 if (numExams === 1) {
+                   doc.fontSize(7).font('Helvetica-Bold')
+                      .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
+                   doc.fontSize(6).font('Helvetica')
+                      .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
+                   const gradeLevel = getGradeLevel(e.class.name);
+                   const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
+                   const timeRange = (schedule as any)[p] || "";
+                   doc.fontSize(5)
+                      .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
+                   if (e.title) {
+                     doc.text(e.title, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                   }
+                 } else {
+                   doc.fontSize(6).font('Helvetica-Bold')
+                      .text(e.subject.code, x + margin + 2, y + margin + yOffset + 2, { width: boxWidth - 4, align: 'center' });
+                   doc.fontSize(5).font('Helvetica')
+                      .text(`${e.class.name} - ${e.type}`, x + margin + 2, y + margin + yOffset + 9, { width: boxWidth - 4, align: 'center' });
+                   if (e.title) {
+                     doc.fontSize(4)
+                        .text(e.title, x + margin + 2, y + margin + yOffset + 15, { width: boxWidth - 4, align: 'center' });
+                   }
+                 }
+               });
+             }
+           }
+         });
+
+         doc.end();
+     } catch (err) {
+         console.error(err);
+         res.status(500).send("Error generating PDF");
+     }
+  });
+
   // === LOGIN AUDIT (Admin only) ===
   app.get("/api/admin/login-audit", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") {
