@@ -565,46 +565,49 @@ export async function registerRoutes(
                  return;
                }
 
+               const dateStr = format(date, 'yyyy-MM-dd');
                const dayExams = exams.filter(e => {
-                 const eDate = new Date(e.date);
-                 return eDate.getDate() === date.getDate() && 
-                        eDate.getMonth() === date.getMonth() &&
-                        e.period === p;
+                 const examDateStr = format(new Date(e.date), 'yyyy-MM-dd');
+                 return examDateStr === dateStr && e.period === p;
                });
 
                if (dayExams.length > 0) {
-                 dayExams.forEach((e) => {
+                 const numExams = dayExams.length;
+                 dayExams.forEach((e, examIndex) => {
                    const margin = 2;
-                   const boxHeight = cellHeight - (margin * 2);
+                   const totalHeight = cellHeight - (margin * 2);
+                   const boxHeight = numExams > 1 ? (totalHeight / numExams) - 1 : totalHeight;
                    const boxWidth = periodColWidth - (margin * 2);
+                   const yOffset = examIndex * (boxHeight + 1);
                    
                    // Get class-specific color
                    const classColor = classColorMap.get(e.classId) || classColorPalette[0];
                    
                    // Rounded box for exam with class color
-                   doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
+                   doc.roundedRect(x + margin, y + margin + yOffset, boxWidth, boxHeight, 3)
                       .fillAndStroke(classColor.bg, classColor.border);
                    
                    doc.fillColor(classColor.text);
                    
-                   // Subject code
-                   doc.fontSize(7).font('Helvetica-Bold')
-                      .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
-                   
-                   // Class name (condensed)
-                   doc.fontSize(6).font('Helvetica')
-                      .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
-                   
-                   // Get Bell Time
-                   const gradeLevel = getGradeLevel(e.class.name);
-                   const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
-                   const timeRange = (schedule as any)[p] || "";
-
-                   // Type & Creator
-                   doc.fontSize(5)
-                      .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
-                   
-                   doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                   if (numExams === 1) {
+                     // Full layout for single exam
+                     doc.fontSize(7).font('Helvetica-Bold')
+                        .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
+                     doc.fontSize(6).font('Helvetica')
+                        .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
+                     const gradeLevel = getGradeLevel(e.class.name);
+                     const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
+                     const timeRange = (schedule as any)[p] || "";
+                     doc.fontSize(5)
+                        .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
+                     doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                   } else {
+                     // Compact layout for multiple exams
+                     doc.fontSize(6).font('Helvetica-Bold')
+                        .text(e.subject.code, x + margin + 2, y + margin + yOffset + 2, { width: boxWidth - 4, align: 'center' });
+                     doc.fontSize(5).font('Helvetica')
+                        .text(`${e.class.name} - ${e.type}`, x + margin + 2, y + margin + yOffset + 10, { width: boxWidth - 4, align: 'center' });
+                   }
                  });
                }
              }
@@ -675,35 +678,44 @@ export async function registerRoutes(
                  return;
                }
 
+               const dateStr = format(date, 'yyyy-MM-dd');
                const dayExams = exams.filter(e => {
-                 const eDate = new Date(e.date);
-                 return eDate.getDate() === date.getDate() && 
-                        eDate.getMonth() === date.getMonth() &&
-                        e.period === p;
+                 const examDateStr = format(new Date(e.date), 'yyyy-MM-dd');
+                 return examDateStr === dateStr && e.period === p;
                });
 
                if (dayExams.length > 0) {
-                 dayExams.forEach((e) => {
+                 const numExams = dayExams.length;
+                 dayExams.forEach((e, examIndex) => {
                    const margin = 2;
-                   const boxHeight = cellHeight - (margin * 2);
+                   const totalHeight = cellHeight - (margin * 2);
+                   const boxHeight = numExams > 1 ? (totalHeight / numExams) - 1 : totalHeight;
                    const boxWidth = periodColWidth - (margin * 2);
+                   const yOffset = examIndex * (boxHeight + 1);
                    const classColor = classColorMap.get(e.classId) || classColorPalette[0];
                    
-                   doc.roundedRect(x + margin, y + margin, boxWidth, boxHeight, 3)
+                   doc.roundedRect(x + margin, y + margin + yOffset, boxWidth, boxHeight, 3)
                       .fillAndStroke(classColor.bg, classColor.border);
                    
                    doc.fillColor(classColor.text);
-                   doc.fontSize(7).font('Helvetica-Bold')
-                      .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
-                   doc.fontSize(6).font('Helvetica')
-                      .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
                    
-                   const gradeLevel = getGradeLevel(e.class.name);
-                   const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
-                   const timeRange = (schedule as any)[p] || "";
-                   doc.fontSize(5)
-                      .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
-                   doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                   if (numExams === 1) {
+                     doc.fontSize(7).font('Helvetica-Bold')
+                        .text(e.subject.code, x + margin + 3, y + margin + 4, { width: boxWidth - 6, align: 'center' });
+                     doc.fontSize(6).font('Helvetica')
+                        .text(e.class.name, x + margin + 3, y + margin + 14, { width: boxWidth - 6, align: 'center' });
+                     const gradeLevel = getGradeLevel(e.class.name);
+                     const schedule = isFri ? BELL_SCHEDULES[gradeLevel].FRI : BELL_SCHEDULES[gradeLevel].MON_THU;
+                     const timeRange = (schedule as any)[p] || "";
+                     doc.fontSize(5)
+                        .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
+                     doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
+                   } else {
+                     doc.fontSize(6).font('Helvetica-Bold')
+                        .text(e.subject.code, x + margin + 2, y + margin + yOffset + 2, { width: boxWidth - 4, align: 'center' });
+                     doc.fontSize(5).font('Helvetica')
+                        .text(`${e.class.name} - ${e.type}`, x + margin + 2, y + margin + yOffset + 10, { width: boxWidth - 4, align: 'center' });
+                   }
                  });
                }
              }
