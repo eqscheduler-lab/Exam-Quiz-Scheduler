@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { useExams } from "@/hooks/use-exams";
 import { User, ExamEvent, Subject, Class } from "@shared/schema";
 import { Users, BookOpen, FileText, ChevronRight, ArrowLeft, Calendar } from "lucide-react";
 import { format } from "date-fns";
@@ -17,17 +18,18 @@ export default function TeacherOverview() {
     queryKey: ["/api/users"],
   });
 
-  const { data: teacherExams, isLoading: examsLoading } = useQuery<ExamWithDetails[]>({
-    queryKey: ["/api/exams", { teacherId: selectedTeacher?.id }],
-    enabled: !!selectedTeacher,
-  });
+  const { data: allExams, isLoading: examsLoading } = useExams({});
 
   const teacherList = teachers?.filter(u => 
     u.role === "TEACHER" || u.role === "COORDINATOR"
   ).sort((a, b) => a.name.localeCompare(b.name)) || [];
 
-  const homeworkList = teacherExams?.filter(e => e.type === "HOMEWORK") || [];
-  const quizList = teacherExams?.filter(e => e.type === "QUIZ") || [];
+  const teacherExams: ExamWithDetails[] = selectedTeacher 
+    ? (allExams?.filter((e: ExamWithDetails) => e.createdByUserId === selectedTeacher.id) || [])
+    : [];
+
+  const homeworkList = teacherExams.filter((e: ExamWithDetails) => e.type === "HOMEWORK");
+  const quizList = teacherExams.filter((e: ExamWithDetails) => e.type === "QUIZ");
 
   if (selectedTeacher) {
     return (
