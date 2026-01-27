@@ -602,11 +602,13 @@ export async function registerRoutes(
                         .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
                      doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
                    } else {
-                     // Compact layout for multiple exams
+                     // Compact layout for multiple exams - include teacher name
                      doc.fontSize(6).font('Helvetica-Bold')
                         .text(e.subject.code, x + margin + 2, y + margin + yOffset + 2, { width: boxWidth - 4, align: 'center' });
                      doc.fontSize(5).font('Helvetica')
-                        .text(`${e.class.name} - ${e.type}`, x + margin + 2, y + margin + yOffset + 10, { width: boxWidth - 4, align: 'center' });
+                        .text(`${e.class.name} - ${e.type}`, x + margin + 2, y + margin + yOffset + 9, { width: boxWidth - 4, align: 'center' });
+                     doc.fontSize(4)
+                        .text(e.creator.name, x + margin + 2, y + margin + yOffset + 15, { width: boxWidth - 4, align: 'center' });
                    }
                  });
                }
@@ -711,10 +713,13 @@ export async function registerRoutes(
                         .text(`${e.type} | ${timeRange}`, x + margin + 3, y + margin + 24, { width: boxWidth - 6, align: 'center' });
                      doc.text(e.creator.name, x + margin + 3, y + margin + 34, { width: boxWidth - 6, align: 'center' });
                    } else {
+                     // Compact layout for multiple exams - include teacher name
                      doc.fontSize(6).font('Helvetica-Bold')
                         .text(e.subject.code, x + margin + 2, y + margin + yOffset + 2, { width: boxWidth - 4, align: 'center' });
                      doc.fontSize(5).font('Helvetica')
-                        .text(`${e.class.name} - ${e.type}`, x + margin + 2, y + margin + yOffset + 10, { width: boxWidth - 4, align: 'center' });
+                        .text(`${e.class.name} - ${e.type}`, x + margin + 2, y + margin + yOffset + 9, { width: boxWidth - 4, align: 'center' });
+                     doc.fontSize(4)
+                        .text(e.creator.name, x + margin + 2, y + margin + yOffset + 15, { width: boxWidth - 4, align: 'center' });
                    }
                  });
                }
