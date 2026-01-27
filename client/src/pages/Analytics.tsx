@@ -366,39 +366,41 @@ export default function Analytics() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Class</TableHead>
-                        <TableHead className="text-right">Homework</TableHead>
-                        <TableHead className="text-right">Quizzes</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {classSummary && Object.entries(classSummary)
-                        .sort((a, b) => a[1].className.localeCompare(b[1].className))
-                        .map(([id, data]) => (
-                        <TableRow key={id} data-testid={`row-class-${id}`}>
-                          <TableCell className="font-medium">{data.className}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="secondary">{data.exams}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="outline">{data.quizzes}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-bold">{data.exams + data.quizzes}</TableCell>
-                        </TableRow>
-                      ))}
-                      {(!classSummary || Object.keys(classSummary).length === 0) && (
+                  <div className="max-h-64 overflow-y-auto">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background">
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                            No data available
-                          </TableCell>
+                          <TableHead>Class</TableHead>
+                          <TableHead className="text-right">Homework</TableHead>
+                          <TableHead className="text-right">Quizzes</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {classSummary && Object.entries(classSummary)
+                          .sort((a, b) => a[1].className.localeCompare(b[1].className))
+                          .map(([id, data]) => (
+                          <TableRow key={id} data-testid={`row-class-${id}`}>
+                            <TableCell className="font-medium">{data.className}</TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="secondary">{data.exams}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="outline">{data.quizzes}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-bold">{data.exams + data.quizzes}</TableCell>
+                          </TableRow>
+                        ))}
+                        {(!classSummary || Object.keys(classSummary).length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                              No data available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -410,39 +412,41 @@ export default function Analytics() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Subject</TableHead>
-                        <TableHead className="text-right">Homework</TableHead>
-                        <TableHead className="text-right">Quizzes</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {subjectSummary && Object.entries(subjectSummary)
-                        .sort((a, b) => a[1].subjectName.localeCompare(b[1].subjectName))
-                        .map(([id, data]) => (
-                        <TableRow key={id} data-testid={`row-subject-${id}`}>
-                          <TableCell className="font-medium">{data.subjectName}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="secondary">{data.exams}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="outline">{data.quizzes}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-bold">{data.exams + data.quizzes}</TableCell>
-                        </TableRow>
-                      ))}
-                      {(!subjectSummary || Object.keys(subjectSummary).length === 0) && (
+                  <div className="max-h-64 overflow-y-auto">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background">
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                            No data available
-                          </TableCell>
+                          <TableHead>Subject</TableHead>
+                          <TableHead className="text-right">Homework</TableHead>
+                          <TableHead className="text-right">Quizzes</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {subjectSummary && Object.entries(subjectSummary)
+                          .sort((a, b) => a[1].subjectName.localeCompare(b[1].subjectName))
+                          .map(([id, data]) => (
+                          <TableRow key={id} data-testid={`row-subject-${id}`}>
+                            <TableCell className="font-medium">{data.subjectName}</TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="secondary">{data.exams}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="outline">{data.quizzes}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-bold">{data.exams + data.quizzes}</TableCell>
+                          </TableRow>
+                        ))}
+                        {(!subjectSummary || Object.keys(subjectSummary).length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                              No data available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -533,38 +537,40 @@ export default function Analytics() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Teacher</TableHead>
-                      <TableHead>Class</TableHead>
-                      <TableHead className="text-right">Homework</TableHead>
-                      <TableHead className="text-right">Quizzes</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {teacherClassBreakdown.length > 0 ? teacherClassBreakdown.map((row, idx) => (
-                      <TableRow key={idx} data-testid={`row-teacher-${idx}`}>
-                        <TableCell className="font-medium">{row.teacherName}</TableCell>
-                        <TableCell>{row.className}</TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="secondary">{row.homework}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="outline">{row.quizzes}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-bold">{row.homework + row.quizzes}</TableCell>
-                      </TableRow>
-                    )) : (
+                <div className="max-h-64 overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background">
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                          No data available
-                        </TableCell>
+                        <TableHead>Teacher</TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead className="text-right">Homework</TableHead>
+                        <TableHead className="text-right">Quizzes</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {teacherClassBreakdown.length > 0 ? teacherClassBreakdown.map((row, idx) => (
+                        <TableRow key={idx} data-testid={`row-teacher-${idx}`}>
+                          <TableCell className="font-medium">{row.teacherName}</TableCell>
+                          <TableCell>{row.className}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="secondary">{row.homework}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant="outline">{row.quizzes}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-bold">{row.homework + row.quizzes}</TableCell>
+                        </TableRow>
+                      )) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                            No data available
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
 
@@ -573,33 +579,35 @@ export default function Analytics() {
                 <CardTitle>Detailed Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Class</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead className="text-right">Homework</TableHead>
-                      <TableHead className="text-right">Quizzes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {analytics?.map((item, idx) => (
-                      <TableRow key={`${item.classId}-${item.subjectId}`} data-testid={`row-detail-${idx}`}>
-                        <TableCell className="font-medium">{item.className}</TableCell>
-                        <TableCell>{item.subjectName}</TableCell>
-                        <TableCell className="text-right">{item.examCount}</TableCell>
-                        <TableCell className="text-right">{item.quizCount}</TableCell>
-                      </TableRow>
-                    ))}
-                    {(!analytics || analytics.length === 0) && (
+                <div className="max-h-64 overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background">
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                          No homework or quizzes have been scheduled yet
-                        </TableCell>
+                        <TableHead>Class</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead className="text-right">Homework</TableHead>
+                        <TableHead className="text-right">Quizzes</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {analytics?.map((item, idx) => (
+                        <TableRow key={`${item.classId}-${item.subjectId}`} data-testid={`row-detail-${idx}`}>
+                          <TableCell className="font-medium">{item.className}</TableCell>
+                          <TableCell>{item.subjectName}</TableCell>
+                          <TableCell className="text-right">{item.examCount}</TableCell>
+                          <TableCell className="text-right">{item.quizCount}</TableCell>
+                        </TableRow>
+                      ))}
+                      {(!analytics || analytics.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                            No homework or quizzes have been scheduled yet
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </>
