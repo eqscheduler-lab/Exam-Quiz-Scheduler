@@ -16,6 +16,7 @@ import ManageClasses from "@/pages/ManageClasses";
 import LoginAudit from "@/pages/LoginAudit";
 import Analytics from "@/pages/Analytics";
 import BulkImport from "@/pages/BulkImport";
+import TeacherOverview from "@/pages/TeacherOverview";
 
 function ProtectedRoute({ component: Component, allowedRoles }: { component: React.ComponentType; allowedRoles: string[] }) {
   const { user } = useAuth();
@@ -72,6 +73,9 @@ function Router() {
       </Route>
       <Route path="/analytics">
         <ProtectedRoute component={Analytics} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"]} />
+      </Route>
+      <Route path="/teacher-overview">
+        <ProtectedRoute component={TeacherOverview} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"]} />
       </Route>
       <Route component={NotFound} />
     </Switch>
