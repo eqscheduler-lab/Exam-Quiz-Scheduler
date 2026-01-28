@@ -3,7 +3,7 @@ import { useExams } from "@/hooks/use-exams";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, CheckCircle, Clock, BookOpen, AlertCircle, Check } from "lucide-react";
+import { Calendar, CheckCircle, Clock, BookOpen, AlertCircle, Check, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { format, startOfWeek, getDay } from "date-fns";
 import { BELL_SCHEDULES, getGradeLevel } from "@shared/schema";
@@ -128,33 +128,42 @@ export default function Dashboard() {
                       ? 'bg-muted/50 border-border/50 opacity-75' 
                       : 'bg-card border-border'
                   }`}>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                            Period {exam.period}
-                          </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            {exam.classProgram} - {exam.section}
-                          </span>
-                          {isDone && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-1">
-                              <Check className="w-3 h-3" />
-                              Done
-                            </span>
-                          )}
+                    <div className="flex items-start gap-3">
+                      {isDone && (
+                        <div className="flex-shrink-0 mt-1">
+                          <CheckCircle2 className="w-6 h-6 text-green-500" />
                         </div>
-                        <h3 className={`font-bold text-lg ${isDone ? 'line-through text-muted-foreground' : ''}`}>{exam.subject.name}</h3>
-                        <p className="text-sm text-muted-foreground">{exam.title}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold ${
-                          exam.type === 'HOMEWORK' 
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
-                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                        }`}>
-                          {exam.type}
-                        </span>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                Period {exam.period}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                {exam.classProgram} - {exam.section}
+                              </span>
+                              {isDone && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-1">
+                                  <Check className="w-3 h-3" />
+                                  Done
+                                </span>
+                              )}
+                            </div>
+                            <h3 className={`font-bold text-lg ${isDone ? 'line-through text-muted-foreground' : ''}`}>{exam.subject.name}</h3>
+                            <p className="text-sm text-muted-foreground">{exam.title}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-block px-2 py-1 rounded-md text-xs font-semibold ${
+                              exam.type === 'HOMEWORK' 
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' 
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                            }`}>
+                              {exam.type}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2 text-xs text-muted-foreground">
