@@ -5,14 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, CheckCircle, Clock, BookOpen, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
-import { format } from "date-fns";
+import { format, startOfWeek } from "date-fns";
 
 export default function Dashboard() {
   const { user } = useAuth();
   
-  // Fetch exams for today for the current user (if teacher) or all (if admin/leadership)
+  // Fetch exams for this week for the current user (if teacher) or all (if admin/leadership)
   const today = new Date();
-  const weekStart = format(today, "yyyy-MM-dd"); // Use a stable string for key
+  const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"); // Start of week (Monday)
   const isTeacher = user?.role === "TEACHER";
   
   const { data: exams, isLoading } = useExams({
