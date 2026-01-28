@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle, Users } from "lucide-react";
+import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle, Users, Calendar } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -42,12 +42,22 @@ interface TeacherAnalyticsData {
   quizCount: number;
 }
 
+interface WeeklyUtilizationData {
+  teacherId: number;
+  teacherName: string;
+  weekStart: string;
+  homeworkCount: number;
+  quizCount: number;
+  totalEntries: number;
+}
+
 export default function Analytics() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState<string>("all");
+  const [selectedWeek, setSelectedWeek] = useState<string>("all");
   
   const { data: analytics, isLoading } = useQuery<AnalyticsData[]>({
     queryKey: ["/api/analytics"],
@@ -55,6 +65,10 @@ export default function Analytics() {
 
   const { data: teacherAnalytics, isLoading: isLoadingTeachers } = useQuery<TeacherAnalyticsData[]>({
     queryKey: ["/api/analytics/teachers"],
+  });
+
+  const { data: weeklyUtilization, isLoading: isLoadingWeekly } = useQuery<WeeklyUtilizationData[]>({
+    queryKey: ["/api/analytics/weekly-utilization"],
   });
 
   const clearHistoryMutation = useMutation({
@@ -610,6 +624,107 @@ export default function Analytics() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Weekly Staff Utilization Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Weekly Staff Utilization
+                  </div>
+                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                    <SelectTrigger className="w-48" data-testid="select-week-filter">
+                      <SelectValue placeholder="Select week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Weeks</SelectItem>
+                      {weeklyUtilization && Array.from(new Set(weeklyUtilization.map(w => w.weekStart))).map(week => (
+                        <SelectItem key={week} value={week}>
+                          Week of {new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingWeekly ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow>
+                          <TableHead>Teacher</TableHead>
+                          <TableHead>Week Starting</TableHead>
+                          <TableHead className="text-right">Homework</TableHead>
+                          <TableHead className="text-right">Quizzes</TableHead>
+                          <TableHead className="text-right">Total Entries</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {weeklyUtilization && weeklyUtilization
+                          .filter(w => selectedWeek === "all" || w.weekStart === selectedWeek)
+                          .map((row, idx) => (
+                          <TableRow key={`${row.teacherId}-${row.weekStart}`} data-testid={`row-weekly-${idx}`}>
+                            <TableCell className="font-medium">{row.teacherName}</TableCell>
+                            <TableCell>
+                              {new Date(row.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="secondary">{row.homeworkCount}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Badge variant="outline">{row.quizCount}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-bold">{row.totalEntries}</TableCell>
+                          </TableRow>
+                        ))}
+                        {(!weeklyUtilization || weeklyUtilization.filter(w => selectedWeek === "all" || w.weekStart === selectedWeek).length === 0) && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                              No weekly data available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Staff Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {teacherSummary && Object.entries(teacherSummary).map(([id, data]) => (
+                <Card key={id} className="hover-elevate" data-testid={`card-teacher-summary-${id}`}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                        {data.teacherName.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{data.teacherName}</h3>
+                        <p className="text-sm text-muted-foreground">{data.classes.size} class{data.classes.size !== 1 ? 'es' : ''}</p>
+                        <div className="flex gap-3 mt-2">
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-purple-500" />
+                            <span className="text-sm">{data.homework} HW</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span className="text-sm">{data.quizzes} Quiz</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </>
         )}
       </div>

@@ -52,6 +52,14 @@ export interface IStorage {
   // Analytics
   getExamAnalytics(): Promise<{ classId: number; className: string; subjectId: number; subjectName: string; subjectCode: string; examCount: number; quizCount: number }[]>;
   getTeacherAnalytics(): Promise<{ teacherId: number; teacherName: string; classId: number; className: string; homeworkCount: number; quizCount: number }[]>;
+  getWeeklyStaffUtilization(): Promise<{ 
+    teacherId: number; 
+    teacherName: string; 
+    weekStart: string; 
+    homeworkCount: number; 
+    quizCount: number; 
+    totalEntries: number;
+  }[]>;
   
   // Factory Reset
   factoryReset(): Promise<void>;
@@ -328,6 +336,69 @@ export class DatabaseStorage implements IStorage {
     }
 
     return Array.from(statsMap.values()).sort((a, b) => a.teacherName.localeCompare(b.teacherName));
+  }
+
+  async getWeeklyStaffUtilization(): Promise<{ 
+    teacherId: number; 
+    teacherName: string; 
+    weekStart: string; 
+    homeworkCount: number; 
+    quizCount: number; 
+    totalEntries: number;
+  }[]> {
+    const allExams = await db.select({
+      exam: examEvents,
+      user: users
+    })
+    .from(examEvents)
+    .innerJoin(users, eq(examEvents.createdByUserId, users.id))
+    .where(eq(examEvents.status, "SCHEDULED"));
+
+    // Group by teacher and week
+    const statsMap = new Map<string, { 
+      teacherId: number; 
+      teacherName: string; 
+      weekStart: string; 
+      homeworkCount: number; 
+      quizCount: number; 
+      totalEntries: number;
+    }>();
+    
+    for (const row of allExams) {
+      // Calculate week start (Monday)
+      const examDate = new Date(row.exam.date);
+      const dayOfWeek = examDate.getDay();
+      const diff = examDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      const weekStart = new Date(examDate.setDate(diff));
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      
+      const key = `${row.user.id}-${weekStartStr}`;
+      if (!statsMap.has(key)) {
+        statsMap.set(key, {
+          teacherId: row.user.id,
+          teacherName: row.user.name,
+          weekStart: weekStartStr,
+          homeworkCount: 0,
+          quizCount: 0,
+          totalEntries: 0
+        });
+      }
+      const stat = statsMap.get(key)!;
+      if (row.exam.type === "HOMEWORK") {
+        stat.homeworkCount++;
+      } else {
+        stat.quizCount++;
+      }
+      stat.totalEntries++;
+    }
+
+    return Array.from(statsMap.values()).sort((a, b) => {
+      // Sort by week descending, then by teacher name
+      if (a.weekStart !== b.weekStart) {
+        return b.weekStart.localeCompare(a.weekStart);
+      }
+      return a.teacherName.localeCompare(b.teacherName);
+    });
   }
 
   async factoryReset(): Promise<void> {

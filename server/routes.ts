@@ -962,6 +962,22 @@ export async function registerRoutes(
     }
   });
 
+  // Weekly Staff Utilization - shows entries per teacher per week
+  app.get("/api/analytics/weekly-utilization", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const role = (req.user as any).role;
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+      return res.sendStatus(403);
+    }
+    try {
+      const weeklyUtilization = await storage.getWeeklyStaffUtilization();
+      res.json(weeklyUtilization);
+    } catch (error) {
+      console.error("Weekly utilization error:", error);
+      res.status(500).json({ message: "Failed to fetch weekly utilization" });
+    }
+  });
+
   // === SEED DATA ===
   // Generate fresh hashes on each startup to ensure passwords work
   const adminHash = await bcrypt.hash("Man@4546161", 10);
