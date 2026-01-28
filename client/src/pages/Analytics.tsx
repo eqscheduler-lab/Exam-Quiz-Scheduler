@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from "recharts";
 
 const COLORS = {
@@ -174,6 +174,43 @@ export default function Analytics() {
     homework: t.homeworkCount,
     quizzes: t.quizCount
   })) || [];
+
+  // Weekly trend data - aggregate by week
+  const weeklyTrendData = weeklyUtilization ? (() => {
+    const weekMap = new Map<string, { weekStart: string; homework: number; quizzes: number; total: number }>();
+    weeklyUtilization.forEach(w => {
+      if (!weekMap.has(w.weekStart)) {
+        weekMap.set(w.weekStart, { weekStart: w.weekStart, homework: 0, quizzes: 0, total: 0 });
+      }
+      const week = weekMap.get(w.weekStart)!;
+      week.homework += w.homeworkCount;
+      week.quizzes += w.quizCount;
+      week.total += w.totalEntries;
+    });
+    return Array.from(weekMap.values())
+      .sort((a, b) => a.weekStart.localeCompare(b.weekStart))
+      .map(w => ({
+        ...w,
+        name: new Date(w.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      }));
+  })() : [];
+
+  // Teacher utilization summary for pie chart
+  const teacherUtilizationData = weeklyUtilization ? (() => {
+    const teacherMap = new Map<number, { name: string; value: number }>();
+    weeklyUtilization.forEach(w => {
+      if (!teacherMap.has(w.teacherId)) {
+        teacherMap.set(w.teacherId, { name: w.teacherName, value: 0 });
+      }
+      teacherMap.get(w.teacherId)!.value += w.totalEntries;
+    });
+    return Array.from(teacherMap.values()).sort((a, b) => b.value - a.value);
+  })() : [];
+
+  const TEACHER_COLORS = [
+    '#3b82f6', '#22c55e', '#f59e0b', '#ec4899', '#6366f1', 
+    '#14b8a6', '#f97316', '#d946ef', '#06b6d4', '#ef4444'
+  ];
 
   return (
     <Layout title="System Analytics">
@@ -625,13 +662,137 @@ export default function Analytics() {
               </CardContent>
             </Card>
 
-            {/* Weekly Staff Utilization Section */}
+            {/* Weekly Trend Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Weekly Activity Trend
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingWeekly ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  ) : weeklyTrendData.length > 0 ? (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={weeklyTrendData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                          <YAxis />
+                          <Tooltip />
+                          <Legend />
+                          <Area type="monotone" dataKey="homework" name="Homework" stackId="1" stroke={COLORS.homework} fill={COLORS.homework} fillOpacity={0.6} />
+                          <Area type="monotone" dataKey="quizzes" name="Quizzes" stackId="1" stroke={COLORS.quiz} fill={COLORS.quiz} fillOpacity={0.6} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">No weekly data available</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Staff Contribution Share
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingWeekly ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  ) : teacherUtilizationData.length > 0 ? (
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={teacherUtilizationData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {teacherUtilizationData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={TEACHER_COLORS[index % TEACHER_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">No staff data available</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Weekly Entries Per Teacher Bar Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  Entries Per Teacher by Week
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingWeekly ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : weeklyUtilization && weeklyUtilization.length > 0 ? (
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={weeklyUtilization
+                          .filter(w => selectedWeek === "all" || w.weekStart === selectedWeek)
+                          .sort((a, b) => a.teacherName.localeCompare(b.teacherName))} 
+                        margin={{ bottom: 60 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="teacherName" 
+                          tick={{ fontSize: 10 }} 
+                          angle={-45} 
+                          textAnchor="end" 
+                          height={80}
+                          interval={0}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value, name) => [value, name === 'homeworkCount' ? 'Homework' : 'Quizzes']}
+                          labelFormatter={(label) => `Teacher: ${label}`}
+                        />
+                        <Legend formatter={(value) => value === 'homeworkCount' ? 'Homework' : 'Quizzes'} />
+                        <Bar dataKey="homeworkCount" name="homeworkCount" fill={COLORS.homework} />
+                        <Bar dataKey="quizCount" name="quizCount" fill={COLORS.quiz} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No data available</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Weekly Staff Utilization Table */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-5 h-5" />
-                    Weekly Staff Utilization
+                    Weekly Staff Utilization Details
                   </div>
                   <Select value={selectedWeek} onValueChange={setSelectedWeek}>
                     <SelectTrigger className="w-48" data-testid="select-week-filter">
