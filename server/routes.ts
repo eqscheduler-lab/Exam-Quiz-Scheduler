@@ -978,12 +978,12 @@ export async function registerRoutes(
     }
   });
 
-  // === INACTIVE ACCOUNTS ===
+  // === INACTIVE ACCOUNTS (Admin only) ===
   app.get("/api/inactive-accounts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role)) {
-      return res.status(403).json({ message: "Access denied" });
+    if (user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied - Admin only" });
     }
     
     try {
@@ -998,8 +998,8 @@ export async function registerRoutes(
   app.post("/api/inactive-accounts/:id/deactivate", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = req.user as any;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role)) {
-      return res.status(403).json({ message: "Access denied" });
+    if (user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied - Admin only" });
     }
     
     try {
