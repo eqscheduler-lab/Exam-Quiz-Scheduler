@@ -424,20 +424,15 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getInactiveAccounts(): Promise<User[]> {
-    // Get all users where:
-    // 1. lastAccessedAt is null (never accessed since account creation)
-    // 2. Account was created more than 10 days ago
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-    
+    // Get all users where lastAccessedAt is null (never logged in)
     const allUsers = await db.select().from(users);
     
     return allUsers.filter(user => {
       // Skip admin accounts for inactivity tracking
       if (user.role === "ADMIN") return false;
       
-      // If never accessed and created more than 10 days ago
-      if (!user.lastAccessedAt && user.createdAt && new Date(user.createdAt) < tenDaysAgo) {
+      // Show all accounts that have never accessed the app
+      if (!user.lastAccessedAt) {
         return true;
       }
       return false;

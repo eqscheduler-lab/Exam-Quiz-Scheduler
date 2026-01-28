@@ -11,7 +11,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { UserX, Loader2, AlertTriangle, CheckCircle } from "lucide-react";
+import { UserX, Loader2, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@shared/schema";
@@ -57,9 +57,7 @@ export default function InactiveAccounts() {
     return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
+      day: "numeric"
     });
   };
 
@@ -72,6 +70,13 @@ export default function InactiveAccounts() {
     return diffDays;
   };
 
+  const isPastGracePeriod = (createdAt: Date | string | null) => {
+    return getDaysSinceCreation(createdAt) >= 10;
+  };
+
+  const accountsPastGracePeriod = inactiveAccounts?.filter(a => isPastGracePeriod(a.createdAt) && a.isActive) || [];
+  const accountsInGracePeriod = inactiveAccounts?.filter(a => !isPastGracePeriod(a.createdAt) && a.isActive) || [];
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -81,20 +86,26 @@ export default function InactiveAccounts() {
             <div>
               <h1 className="text-3xl font-bold font-display">Inactive Accounts</h1>
               <p className="text-muted-foreground mt-1">
-                Accounts that haven't accessed the app since activation (10+ days)
+                Accounts that haven't logged in since activation
               </p>
             </div>
-            <Badge variant="outline" className="flex items-center gap-2 px-3 py-1.5">
-              <UserX className="w-4 h-4" />
-              {inactiveAccounts?.length || 0} accounts
-            </Badge>
+            <div className="flex items-center gap-3">
+              <Badge variant="destructive" className="flex items-center gap-2 px-3 py-1.5">
+                <AlertTriangle className="w-4 h-4" />
+                {accountsPastGracePeriod.length} past 10 days
+              </Badge>
+              <Badge variant="outline" className="flex items-center gap-2 px-3 py-1.5">
+                <Clock className="w-4 h-4" />
+                {accountsInGracePeriod.length} in grace period
+              </Badge>
+            </div>
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-amber-500" />
-                Accounts Pending Review
+                <UserX className="w-5 h-5" />
+                Accounts That Never Logged In
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -103,94 +114,111 @@ export default function InactiveAccounts() {
                   <Loader2 className="w-6 h-6 animate-spin" />
                 </div>
               ) : inactiveAccounts && inactiveAccounts.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Days Inactive</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {inactiveAccounts.map((account) => (
-                      <TableRow key={account.id} data-testid={`row-inactive-account-${account.id}`}>
-                        <TableCell className="font-medium">{account.name}</TableCell>
-                        <TableCell>{account.username}</TableCell>
-                        <TableCell>{account.email}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{account.role}</Badge>
-                        </TableCell>
-                        <TableCell>{formatDate(account.createdAt)}</TableCell>
-                        <TableCell>
-                          <Badge variant="destructive">
-                            {getDaysSinceCreation(account.createdAt)} days
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {account.isActive ? (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300">
-                              Never Accessed
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary">Deactivated</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {account.isActive && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm"
-                                  disabled={deactivateMutation.isPending}
-                                  data-testid={`button-deactivate-${account.id}`}
-                                >
-                                  {deactivateMutation.isPending ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <UserX className="w-4 h-4 mr-1" />
-                                      Deactivate
-                                    </>
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Deactivate Account?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will mark <strong>{account.name}</strong>'s account as inactive. 
-                                    They will not be able to log in until reactivated.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deactivateMutation.mutate(account.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Deactivate
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </TableCell>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Name</TableHead>
+                        <TableHead className="font-semibold">Username</TableHead>
+                        <TableHead className="font-semibold">Email</TableHead>
+                        <TableHead className="font-semibold">Role</TableHead>
+                        <TableHead className="font-semibold">Created</TableHead>
+                        <TableHead className="font-semibold">Days Since Creation</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="text-right font-semibold">Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {inactiveAccounts
+                        .sort((a, b) => getDaysSinceCreation(b.createdAt) - getDaysSinceCreation(a.createdAt))
+                        .map((account) => {
+                          const daysSinceCreation = getDaysSinceCreation(account.createdAt);
+                          const isPast10Days = daysSinceCreation >= 10;
+                          
+                          return (
+                            <TableRow 
+                              key={account.id} 
+                              data-testid={`row-inactive-account-${account.id}`}
+                              className={isPast10Days && account.isActive ? "bg-destructive/5" : ""}
+                            >
+                              <TableCell className="font-medium">{account.name}</TableCell>
+                              <TableCell className="text-muted-foreground">{account.username}</TableCell>
+                              <TableCell className="text-muted-foreground">{account.email}</TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">{account.role}</Badge>
+                              </TableCell>
+                              <TableCell>{formatDate(account.createdAt)}</TableCell>
+                              <TableCell>
+                                <Badge variant={isPast10Days ? "destructive" : "outline"}>
+                                  {daysSinceCreation} {daysSinceCreation === 1 ? "day" : "days"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {!account.isActive ? (
+                                  <Badge variant="secondary">Deactivated</Badge>
+                                ) : isPast10Days ? (
+                                  <Badge variant="destructive">
+                                    Eligible for Deactivation
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                    Grace Period ({10 - daysSinceCreation} days left)
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {account.isActive && isPast10Days && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button 
+                                        variant="destructive" 
+                                        size="sm"
+                                        disabled={deactivateMutation.isPending}
+                                        data-testid={`button-deactivate-${account.id}`}
+                                      >
+                                        {deactivateMutation.isPending ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <UserX className="w-4 h-4 mr-1" />
+                                            Deactivate
+                                          </>
+                                        )}
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Deactivate Account?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This will mark <strong>{account.name}</strong>'s account as inactive. 
+                                          They will not be able to log in until reactivated.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deactivateMutation.mutate(account.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Deactivate
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
                   <h3 className="text-lg font-semibold">All Accounts Active</h3>
                   <p className="text-muted-foreground mt-1">
-                    No accounts have been inactive for more than 10 days since creation.
+                    All staff accounts have logged in at least once.
                   </p>
                 </div>
               )}
@@ -199,17 +227,14 @@ export default function InactiveAccounts() {
 
           <Card>
             <CardHeader>
-              <CardTitle>About This Page</CardTitle>
+              <CardTitle>How This Works</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>
-                This page shows accounts that were created but never accessed within 10 days of creation.
-              </p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Accounts are flagged if they have never logged in since being created</li>
-                <li>Only accounts created more than 10 days ago appear here</li>
-                <li>Admin accounts are excluded from this tracking</li>
-                <li>Deactivating an account prevents the user from logging in</li>
+                <li><strong>Grace Period:</strong> New accounts have 10 days to log in for the first time</li>
+                <li><strong>Eligible for Deactivation:</strong> After 10 days without logging in, accounts can be deactivated</li>
+                <li><strong>Deactivation:</strong> Deactivated accounts cannot log in until reactivated by an admin</li>
+                <li>Admin accounts are not tracked for inactivity</li>
               </ul>
             </CardContent>
           </Card>
