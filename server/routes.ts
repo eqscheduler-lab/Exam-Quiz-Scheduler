@@ -1012,6 +1012,271 @@ export async function registerRoutes(
     }
   });
 
+  // === DOCUMENTATION PDF GENERATION ===
+  app.get("/api/documentation/:type", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied - Admin only" });
+    }
+
+    const type = req.params.type;
+    const validTypes = ["admin", "teacher", "principal"];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ message: "Invalid manual type" });
+    }
+
+    try {
+      const doc = new PDFDocument({ margin: 50, size: 'A4' });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${type}-manual.pdf"`);
+      doc.pipe(res);
+
+      // Helper functions
+      const addHeader = (text: string, size = 24) => {
+        doc.fontSize(size).font('Helvetica-Bold').fillColor('#1a1a2e').text(text);
+        doc.moveDown(0.5);
+      };
+
+      const addSubHeader = (text: string) => {
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#16213e').text(text);
+        doc.moveDown(0.3);
+      };
+
+      const addParagraph = (text: string) => {
+        doc.fontSize(11).font('Helvetica').fillColor('#333').text(text, { lineGap: 4 });
+        doc.moveDown(0.5);
+      };
+
+      const addBullet = (text: string) => {
+        doc.fontSize(11).font('Helvetica').fillColor('#333').text(`  •  ${text}`, { lineGap: 3 });
+      };
+
+      const addDivider = () => {
+        doc.moveDown(0.5);
+        doc.strokeColor('#e0e0e0').lineWidth(1)
+          .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+        doc.moveDown(0.8);
+      };
+
+      const addTip = (text: string) => {
+        const y = doc.y;
+        doc.rect(50, y, 495, 40).fill('#e8f4f8');
+        doc.fillColor('#0077b6').fontSize(10).font('Helvetica-Bold')
+          .text('💡 TIP', 60, y + 8);
+        doc.fillColor('#333').fontSize(10).font('Helvetica')
+          .text(text, 60, y + 22, { width: 475 });
+        doc.y = y + 50;
+      };
+
+      // Cover Page
+      doc.rect(0, 0, 595, 150).fill('#1a1a2e');
+      doc.fillColor('#fff').fontSize(28).font('Helvetica-Bold')
+        .text('Exam & Quiz Scheduler', 50, 60);
+      doc.fontSize(18).font('Helvetica')
+        .text(`${type.charAt(0).toUpperCase() + type.slice(1)} Manual`, 50, 100);
+      doc.fillColor('#888').fontSize(10)
+        .text('Asia/Dubai Timezone', 50, 130);
+      doc.y = 180;
+      doc.fillColor('#333');
+
+      if (type === "admin") {
+        // Admin Manual Content
+        addHeader('Administrator Manual');
+        addParagraph('Welcome to the Exam & Quiz Scheduler Administrator Manual. This comprehensive guide covers all administrative functions including user management, system configuration, and analytics.');
+        
+        addDivider();
+        addSubHeader('1. Dashboard Overview');
+        addParagraph('The Admin Dashboard provides a quick overview of today\'s scheduled exams, system status, and quick access to key functions.');
+        addBullet('Today\'s Exams - Shows count and list of exams scheduled for today');
+        addBullet('Quick Actions - Direct links to schedule view and common tasks');
+        addBullet('Upcoming This Week - Preview of scheduled items for the week');
+        
+        doc.addPage();
+        addSubHeader('2. User Management');
+        addParagraph('Manage all staff accounts from the Manage Staff page. You can create, edit, and deactivate user accounts.');
+        addBullet('Create new users with roles: Teacher, Coordinator, Principal, Vice Principal, Admin');
+        addBullet('Edit user details including name, email, and role');
+        addBullet('Reset passwords for users who have forgotten them');
+        addBullet('Deactivate accounts when staff members leave');
+        addTip('Use strong passwords for all accounts. Default password for bulk imports is "Staff123".');
+        
+        addDivider();
+        addSubHeader('3. Bulk Import');
+        addParagraph('Import large amounts of data using CSV files. Navigate to Administration > Bulk Import.');
+        addBullet('Staff Import: name, username, email, role columns');
+        addBullet('Subjects Import: code, name columns');
+        addBullet('Classes Import: name column (format: A10[AMT]/1)');
+        addTip('Download the template CSV files to ensure correct formatting.');
+        
+        addDivider();
+        addSubHeader('4. Subject Management');
+        addParagraph('Create and manage academic subjects that can be assigned to bookings.');
+        addBullet('Each subject has a unique code and name');
+        addBullet('Subjects are required when creating exam or homework bookings');
+        
+        addDivider();
+        addSubHeader('5. Class Management');
+        addParagraph('Define class sections following the naming convention: A[Grade][Program]/Section');
+        addBullet('Example: A10AMT/1 = Grade 10, AMT program, Section 1');
+        addBullet('Grade determines bell schedule (G9-10 vs G11-12)');
+        
+        doc.addPage();
+        addSubHeader('6. Analytics & Reports');
+        addParagraph('View comprehensive analytics on staff utilization and scheduling patterns.');
+        addBullet('Weekly Staff Utilization - Track homework and quiz submissions by teacher');
+        addBullet('Class Distribution - See scheduling load across classes');
+        addBullet('Export reports for meetings and reviews');
+        
+        addDivider();
+        addSubHeader('7. Inactive Accounts');
+        addParagraph('Monitor accounts that haven\'t logged in since creation.');
+        addBullet('10-day grace period for new accounts');
+        addBullet('Deactivate inactive accounts to maintain security');
+        addBullet('Admin accounts are exempt from inactivity tracking');
+        
+        addDivider();
+        addSubHeader('8. Login Audit');
+        addParagraph('Track all login activity across the system for security monitoring.');
+        addBullet('View login history with timestamps');
+        addBullet('Monitor for suspicious activity');
+
+      } else if (type === "teacher") {
+        // Teacher Manual Content
+        addHeader('Teacher Manual');
+        addParagraph('Welcome to the Exam & Quiz Scheduler Teacher Manual. This guide will help you schedule homework and quizzes, manage your bookings, and navigate the system effectively.');
+        
+        addDivider();
+        addSubHeader('1. Getting Started');
+        addParagraph('After logging in, you\'ll see your Dashboard showing today\'s scheduled items and upcoming exams for the week.');
+        addBullet('Your dashboard shows only YOUR bookings');
+        addBullet('Completed periods are marked as "Done" automatically');
+        
+        addDivider();
+        addSubHeader('2. Viewing the Schedule');
+        addParagraph('Navigate to Schedule to see the master schedule grid. You can view all classes or filter by specific class.');
+        addBullet('Use week navigation to browse different weeks');
+        addBullet('Click on any booking to see details');
+        addBullet('Download PDF for offline reference');
+        addTip('Use the class filter to focus on your assigned classes.');
+        
+        doc.addPage();
+        addSubHeader('3. Creating a Booking');
+        addParagraph('To schedule a quiz or homework assignment:');
+        addBullet('1. Navigate to the Schedule page');
+        addBullet('2. Click the "+" button on the desired period and day');
+        addBullet('3. Select booking type: Quiz or Homework');
+        addBullet('4. Choose the class, subject, and add a title');
+        addBullet('5. Click Create to save the booking');
+        addTip('Quiz limit: 1 per class per day. Homework: Unlimited per day.');
+        
+        addDivider();
+        addSubHeader('4. Booking Rules');
+        addParagraph('Important rules to remember when scheduling:');
+        addBullet('Quiz: Maximum 1 quiz per class per day');
+        addBullet('Homework: No daily limit');
+        addBullet('Cannot book on weekends');
+        addBullet('Friday has only 4 periods');
+        addBullet('Monday-Thursday has 8 periods');
+        
+        addDivider();
+        addSubHeader('5. Bell Schedules');
+        addParagraph('Different grades follow different bell schedules:');
+        doc.moveDown(0.3);
+        doc.fontSize(10).font('Helvetica-Bold').text('Grades 9-10 (Mon-Thu):');
+        addBullet('Period 1: 07:30-08:20  |  Period 5: 11:20-12:10');
+        addBullet('Period 2: 08:25-09:15  |  Period 6: 12:40-13:30');
+        addBullet('Period 3: 09:30-10:20  |  Period 7: 13:35-14:25');
+        addBullet('Period 4: 10:25-11:15  |  Period 8: 14:30-15:10');
+        
+        doc.addPage();
+        addSubHeader('6. Managing Your Bookings');
+        addParagraph('Access My Exams to see all your scheduled items.');
+        addBullet('View your upcoming and past bookings');
+        addBullet('Cancel bookings you no longer need');
+        addBullet('Only you can cancel your own bookings');
+        
+        addDivider();
+        addSubHeader('7. Exporting Schedules');
+        addParagraph('Download PDF schedules for printing or sharing.');
+        addBullet('Single class export: Filter by class and click Export PDF');
+        addBullet('Multi-class export: Select multiple classes to include');
+        addBullet('Each class gets a unique color for easy identification');
+
+      } else if (type === "principal") {
+        // Principal/VP Manual Content
+        addHeader('Principal / Vice Principal Manual');
+        addParagraph('Welcome to the Exam & Quiz Scheduler Leadership Manual. This guide covers oversight functions, analytics, and reporting features available to school leadership.');
+        
+        addDivider();
+        addSubHeader('1. Dashboard Overview');
+        addParagraph('Your dashboard provides a school-wide view of today\'s scheduled exams and upcoming items.');
+        addBullet('See all exams scheduled across the school');
+        addBullet('Completed periods are automatically marked as "Done"');
+        addBullet('Quick access to reports and analytics');
+        
+        addDivider();
+        addSubHeader('2. Master Schedule');
+        addParagraph('View the complete school schedule from the Schedule page.');
+        addBullet('See all classes and their scheduled items');
+        addBullet('Filter by specific class or view all');
+        addBullet('Navigate between weeks to plan ahead');
+        addBullet('Export PDF schedules for distribution');
+        addTip('Use the multi-export feature to create comprehensive schedule documents.');
+        
+        doc.addPage();
+        addSubHeader('3. Teacher Overview');
+        addParagraph('Monitor teacher activity and scheduling patterns.');
+        addBullet('See which teachers are actively using the system');
+        addBullet('View booking counts by teacher');
+        addBullet('Identify teachers who may need support or training');
+        
+        addDivider();
+        addSubHeader('4. Analytics Dashboard');
+        addParagraph('Access detailed analytics for informed decision-making.');
+        addBullet('Weekly Staff Utilization - Charts showing homework/quiz activity');
+        addBullet('Filter by week to track trends over time');
+        addBullet('View breakdown by teacher and booking type');
+        addBullet('Use data for performance reviews and planning');
+        
+        addDivider();
+        addSubHeader('5. Reports & Export');
+        addParagraph('Generate reports for meetings and documentation.');
+        addBullet('Export schedules as PDF with professional formatting');
+        addBullet('Each class is color-coded for easy reference');
+        addBullet('Share digital or printed copies with stakeholders');
+        
+        doc.addPage();
+        addSubHeader('6. Understanding Booking Rules');
+        addParagraph('Be aware of the scheduling constraints in place:');
+        addBullet('Quiz Limit: Maximum 1 quiz per class per day');
+        addBullet('Homework: Unlimited per day');
+        addBullet('Period Limits: 8 periods Mon-Thu, 4 periods Friday');
+        addBullet('Timezone: All times displayed in Asia/Dubai');
+        
+        addDivider();
+        addSubHeader('7. User Roles Explained');
+        addParagraph('Understanding the role hierarchy:');
+        addBullet('Admin - Full system access including user management');
+        addBullet('Principal - View all, access analytics and reports');
+        addBullet('Vice Principal - Same as Principal');
+        addBullet('Coordinator - Enhanced teacher with department oversight');
+        addBullet('Teacher - Create and manage own bookings');
+      }
+
+      // Footer on last page
+      doc.moveDown(2);
+      doc.fontSize(9).fillColor('#888')
+        .text('Exam & Quiz Scheduler - Academic Management System', { align: 'center' });
+      doc.text('All times displayed in Asia/Dubai timezone', { align: 'center' });
+
+      doc.end();
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ message: "Failed to generate PDF" });
+    }
+  });
+
   // === SEED DATA ===
   // Generate fresh hashes on each startup to ensure passwords work
   const adminHash = await bcrypt.hash("Man@4546161", 10);

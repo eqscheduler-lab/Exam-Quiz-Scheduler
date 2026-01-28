@@ -18,6 +18,7 @@ import Analytics from "@/pages/Analytics";
 import BulkImport from "@/pages/BulkImport";
 import TeacherOverview from "@/pages/TeacherOverview";
 import InactiveAccounts from "@/pages/InactiveAccounts";
+import Documentation from "@/pages/Documentation";
 
 function ProtectedRoute({ component: Component, allowedRoles }: { component: React.ComponentType; allowedRoles: string[] }) {
   const { user } = useAuth();
@@ -71,6 +72,9 @@ function Router() {
       </Route>
       <Route path="/admin/bulk-import">
         <ProtectedRoute component={BulkImport} allowedRoles={["ADMIN"]} />
+      </Route>
+      <Route path="/admin/documentation">
+        <ProtectedRoute component={Documentation} allowedRoles={["ADMIN"]} />
       </Route>
       <Route path="/analytics">
         <ProtectedRoute component={Analytics} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"]} />

@@ -213,6 +213,16 @@ export function Sidebar() {
               <FileUp className="w-4 h-4" />
               Bulk Import
             </Link>
+
+            <Link href="/admin/documentation" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive("/admin/documentation") 
+                ? "bg-primary/10 text-primary shadow-sm" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )} data-testid="link-documentation">
+              <BookOpen className="w-4 h-4" />
+              Documentation
+            </Link>
           </>
         )}
       </nav>
