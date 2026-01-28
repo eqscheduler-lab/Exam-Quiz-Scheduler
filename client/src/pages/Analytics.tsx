@@ -709,26 +709,35 @@ export default function Analytics() {
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
                   ) : teacherUtilizationData.length > 0 ? (
-                    <div className="h-64">
+                    <div className="h-72">
                       <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={teacherUtilizationData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
+                        <BarChart 
+                          data={teacherUtilizationData.slice(0, 10)} 
+                          layout="vertical"
+                          margin={{ left: 20, right: 20 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis type="number" />
+                          <YAxis 
+                            dataKey="name" 
+                            type="category" 
+                            width={100} 
+                            tick={{ fontSize: 11 }}
+                            tickFormatter={(value) => value.length > 12 ? value.slice(0, 12) + '...' : value}
+                          />
+                          <Tooltip 
+                            formatter={(value: number) => [`${value} entries`, 'Total']}
+                          />
+                          <Bar 
+                            dataKey="value" 
+                            name="Entries"
+                            radius={[0, 4, 4, 0]}
                           >
-                            {teacherUtilizationData.map((entry, index) => (
+                            {teacherUtilizationData.slice(0, 10).map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={TEACHER_COLORS[index % TEACHER_COLORS.length]} />
                             ))}
-                          </Pie>
-                          <Tooltip />
-                          <Legend />
-                        </PieChart>
+                          </Bar>
+                        </BarChart>
                       </ResponsiveContainer>
                     </div>
                   ) : (
