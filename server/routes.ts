@@ -1032,10 +1032,27 @@ export async function registerRoutes(
       res.setHeader('Content-Disposition', `attachment; filename="${type}-manual.pdf"`);
       doc.pipe(res);
 
+      // Screenshot paths
+      const screenshotPath = (name: string) => `./server/assets/screenshots/${name}.png`;
+      const fs = await import('fs');
+
       // Helper functions
       const addHeader = (text: string, size = 24) => {
         doc.fontSize(size).font('Helvetica-Bold').fillColor('#1a1a2e').text(text);
         doc.moveDown(0.5);
+      };
+
+      const addScreenshot = (name: string, caption: string) => {
+        const imgPath = screenshotPath(name);
+        if (fs.existsSync(imgPath)) {
+          doc.moveDown(0.5);
+          doc.image(imgPath, 50, doc.y, { width: 495 });
+          doc.moveDown(0.3);
+          doc.fontSize(9).font('Helvetica-Oblique').fillColor('#666')
+            .text(caption, { align: 'center' });
+          doc.moveDown(0.8);
+          doc.font('Helvetica').fillColor('#333');
+        }
       };
 
       const addSubHeader = (text: string) => {
@@ -1091,6 +1108,7 @@ export async function registerRoutes(
         addBullet('Today\'s Exams - Shows count and list of exams scheduled for today');
         addBullet('Quick Actions - Direct links to schedule view and common tasks');
         addBullet('Upcoming This Week - Preview of scheduled items for the week');
+        addScreenshot('dashboard', 'Figure 1.1: Admin Dashboard showing today\'s exams and quick actions');
         
         doc.addPage();
         addSubHeader('2. User Management');
@@ -1099,14 +1117,16 @@ export async function registerRoutes(
         addBullet('Edit user details including name, email, and role');
         addBullet('Reset passwords for users who have forgotten them');
         addBullet('Deactivate accounts when staff members leave');
+        addScreenshot('users', 'Figure 2.1: User Management page showing staff accounts');
         addTip('Use strong passwords for all accounts. Default password for bulk imports is "Staff123".');
         
-        addDivider();
+        doc.addPage();
         addSubHeader('3. Bulk Import');
         addParagraph('Import large amounts of data using CSV files. Navigate to Administration > Bulk Import.');
         addBullet('Staff Import: name, username, email, role columns');
         addBullet('Subjects Import: code, name columns');
         addBullet('Classes Import: name column (format: A10[AMT]/1)');
+        addScreenshot('bulk-import', 'Figure 3.1: Bulk Import page with CSV upload sections');
         addTip('Download the template CSV files to ensure correct formatting.');
         
         addDivider();
@@ -1127,6 +1147,7 @@ export async function registerRoutes(
         addBullet('Weekly Staff Utilization - Track homework and quiz submissions by teacher');
         addBullet('Class Distribution - See scheduling load across classes');
         addBullet('Export reports for meetings and reviews');
+        addScreenshot('analytics', 'Figure 6.1: Analytics Dashboard with weekly utilization charts');
         
         addDivider();
         addSubHeader('7. Inactive Accounts');
@@ -1151,13 +1172,15 @@ export async function registerRoutes(
         addParagraph('After logging in, you\'ll see your Dashboard showing today\'s scheduled items and upcoming exams for the week.');
         addBullet('Your dashboard shows only YOUR bookings');
         addBullet('Completed periods are marked as "Done" automatically');
+        addScreenshot('dashboard', 'Figure 1.1: Teacher Dashboard showing today\'s schedule');
         
-        addDivider();
+        doc.addPage();
         addSubHeader('2. Viewing the Schedule');
         addParagraph('Navigate to Schedule to see the master schedule grid. You can view all classes or filter by specific class.');
         addBullet('Use week navigation to browse different weeks');
         addBullet('Click on any booking to see details');
         addBullet('Download PDF for offline reference');
+        addScreenshot('schedule', 'Figure 2.1: Schedule grid showing weekly view');
         addTip('Use the class filter to focus on your assigned classes.');
         
         doc.addPage();
@@ -1168,6 +1191,7 @@ export async function registerRoutes(
         addBullet('3. Select booking type: Quiz or Homework');
         addBullet('4. Choose the class, subject, and add a title');
         addBullet('5. Click Create to save the booking');
+        addScreenshot('booking-form', 'Figure 3.1: Create Booking dialog');
         addTip('Quiz limit: 1 per class per day. Homework: Unlimited per day.');
         
         addDivider();
@@ -1179,7 +1203,7 @@ export async function registerRoutes(
         addBullet('Friday has only 4 periods');
         addBullet('Monday-Thursday has 8 periods');
         
-        addDivider();
+        doc.addPage();
         addSubHeader('5. Bell Schedules');
         addParagraph('Different grades follow different bell schedules:');
         doc.moveDown(0.3);
@@ -1189,7 +1213,7 @@ export async function registerRoutes(
         addBullet('Period 3: 09:30-10:20  |  Period 7: 13:35-14:25');
         addBullet('Period 4: 10:25-11:15  |  Period 8: 14:30-15:10');
         
-        doc.addPage();
+        addDivider();
         addSubHeader('6. Managing Your Bookings');
         addParagraph('Access My Exams to see all your scheduled items.');
         addBullet('View your upcoming and past bookings');
@@ -1214,14 +1238,15 @@ export async function registerRoutes(
         addBullet('See all exams scheduled across the school');
         addBullet('Completed periods are automatically marked as "Done"');
         addBullet('Quick access to reports and analytics');
+        addScreenshot('dashboard', 'Figure 1.1: Leadership Dashboard showing school-wide schedule');
         
-        addDivider();
         addSubHeader('2. Master Schedule');
         addParagraph('View the complete school schedule from the Schedule page.');
         addBullet('See all classes and their scheduled items');
         addBullet('Filter by specific class or view all');
         addBullet('Navigate between weeks to plan ahead');
         addBullet('Export PDF schedules for distribution');
+        addScreenshot('schedule', 'Figure 2.1: Master Schedule grid showing all classes');
         addTip('Use the multi-export feature to create comprehensive schedule documents.');
         
         doc.addPage();
@@ -1230,6 +1255,7 @@ export async function registerRoutes(
         addBullet('See which teachers are actively using the system');
         addBullet('View booking counts by teacher');
         addBullet('Identify teachers who may need support or training');
+        addScreenshot('users', 'Figure 3.1: Teacher Overview showing staff activity');
         
         addDivider();
         addSubHeader('4. Analytics Dashboard');
@@ -1238,8 +1264,9 @@ export async function registerRoutes(
         addBullet('Filter by week to track trends over time');
         addBullet('View breakdown by teacher and booking type');
         addBullet('Use data for performance reviews and planning');
+        addScreenshot('analytics', 'Figure 4.1: Analytics Dashboard with utilization charts');
         
-        addDivider();
+        doc.addPage();
         addSubHeader('5. Reports & Export');
         addParagraph('Generate reports for meetings and documentation.');
         addBullet('Export schedules as PDF with professional formatting');
