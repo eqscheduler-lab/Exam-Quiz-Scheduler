@@ -106,6 +106,8 @@ export function setupAuth(app: Express) {
             userAgent: userAgent,
             success: true
           });
+          // Update last accessed timestamp
+          await storage.updateLastAccessedAt(user.id);
         } catch (auditErr) {
           console.error("Failed to log login audit:", auditErr);
         }

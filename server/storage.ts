@@ -63,6 +63,11 @@ export interface IStorage {
   
   // Factory Reset
   factoryReset(): Promise<void>;
+  
+  // Account Activity Tracking
+  updateLastAccessedAt(userId: number): Promise<void>;
+  getInactiveAccounts(): Promise<User[]>;
+  markAccountInactive(userId: number): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -412,6 +417,39 @@ export class DatabaseStorage implements IStorage {
     await db.delete(users).where(eq(users.role, "COORDINATOR"));
     await db.delete(users).where(eq(users.role, "PRINCIPAL"));
     await db.delete(users).where(eq(users.role, "VICE_PRINCIPAL"));
+  }
+  
+  async updateLastAccessedAt(userId: number): Promise<void> {
+    await db.update(users).set({ lastAccessedAt: new Date() }).where(eq(users.id, userId));
+  }
+  
+  async getInactiveAccounts(): Promise<User[]> {
+    // Get all users where:
+    // 1. lastAccessedAt is null (never accessed since account creation)
+    // 2. Account was created more than 10 days ago
+    const tenDaysAgo = new Date();
+    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    
+    const allUsers = await db.select().from(users);
+    
+    return allUsers.filter(user => {
+      // Skip admin accounts for inactivity tracking
+      if (user.role === "ADMIN") return false;
+      
+      // If never accessed and created more than 10 days ago
+      if (!user.lastAccessedAt && user.createdAt && new Date(user.createdAt) < tenDaysAgo) {
+        return true;
+      }
+      return false;
+    });
+  }
+  
+  async markAccountInactive(userId: number): Promise<User> {
+    const [updatedUser] = await db.update(users)
+      .set({ isActive: false })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
   }
 }
 

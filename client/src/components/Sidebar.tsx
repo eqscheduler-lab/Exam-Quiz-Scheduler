@@ -12,7 +12,8 @@ import {
   Shield,
   RotateCcw,
   AlertTriangle,
-  FileUp
+  FileUp,
+  UserX
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -140,6 +141,16 @@ export function Sidebar() {
             )} data-testid="link-teacher-overview">
               <Users className="w-4 h-4" />
               Teacher Overview
+            </Link>
+            
+            <Link href="/inactive-accounts" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive("/inactive-accounts") 
+                ? "bg-primary/10 text-primary shadow-sm" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )} data-testid="link-inactive-accounts">
+              <UserX className="w-4 h-4" />
+              Inactive Accounts
             </Link>
           </>
         )}

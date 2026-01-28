@@ -978,6 +978,40 @@ export async function registerRoutes(
     }
   });
 
+  // === INACTIVE ACCOUNTS ===
+  app.get("/api/inactive-accounts", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    try {
+      const inactiveAccounts = await storage.getInactiveAccounts();
+      res.json(inactiveAccounts);
+    } catch (error) {
+      console.error("Inactive accounts error:", error);
+      res.status(500).json({ message: "Failed to fetch inactive accounts" });
+    }
+  });
+  
+  app.post("/api/inactive-accounts/:id/deactivate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    try {
+      const userId = parseInt(req.params.id);
+      const updatedUser = await storage.markAccountInactive(userId);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Mark inactive error:", error);
+      res.status(500).json({ message: "Failed to mark account inactive" });
+    }
+  });
+
   // === SEED DATA ===
   // Generate fresh hashes on each startup to ensure passwords work
   const adminHash = await bcrypt.hash("Man@4546161", 10);
