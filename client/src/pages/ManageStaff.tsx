@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, UserPlus, Mail, Shield, Trash2, Loader2, Download, Pencil } from "lucide-react";
+import { Plus, UserPlus, Mail, Shield, Trash2, Loader2, Download, Pencil, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@shared/routes";
 import { type User, userRoles } from "@shared/schema";
@@ -48,6 +48,8 @@ export default function ManageStaff() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
   const { data: staff, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -150,6 +152,29 @@ export default function ManageStaff() {
       toast({ 
         title: "Error", 
         description: error.message || "Failed to update staff member", 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: { userId: number; newPassword: string }) => {
+      const res = await apiRequest("POST", `/api/admin/users/${data.userId}/reset-password`, { newPassword: data.newPassword });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to reset password");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Password has been reset successfully" });
+      setResetPasswordUser(null);
+      setNewPassword("");
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to reset password", 
         variant: "destructive" 
       });
     },
@@ -297,8 +322,19 @@ export default function ManageStaff() {
                         className="h-8 w-8 text-muted-foreground"
                         onClick={() => setEditingUser(member)}
                         data-testid={`button-edit-user-${member.id}`}
+                        title="Edit user"
                       >
                         <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground"
+                        onClick={() => setResetPasswordUser(member)}
+                        data-testid={`button-reset-password-${member.id}`}
+                        title="Reset password"
+                      >
+                        <KeyRound className="w-4 h-4" />
                       </Button>
                       <Button 
                         variant="ghost" 
@@ -307,6 +343,7 @@ export default function ManageStaff() {
                         onClick={() => deleteMutation.mutate(member.id)}
                         disabled={deleteMutation.isPending}
                         data-testid={`button-delete-user-${member.id}`}
+                        title="Deactivate user"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -374,6 +411,57 @@ export default function ManageStaff() {
                   <Button type="submit" disabled={editMutation.isPending}>
                     {editMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Changes
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Reset Password Dialog */}
+        <Dialog open={!!resetPasswordUser} onOpenChange={(open) => {
+          if (!open) {
+            setResetPasswordUser(null);
+            setNewPassword("");
+          }
+        }}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Reset Password</DialogTitle>
+            </DialogHeader>
+            {resetPasswordUser && (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                resetPasswordMutation.mutate({
+                  userId: resetPasswordUser.id,
+                  newPassword: newPassword,
+                });
+              }} className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Reset password for <span className="font-semibold text-foreground">{resetPasswordUser.name}</span> ({resetPasswordUser.username})
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">New Password</label>
+                  <Input 
+                    type="password" 
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min 6 characters)"
+                    minLength={6}
+                    required
+                    data-testid="input-new-password"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setResetPasswordUser(null);
+                    setNewPassword("");
+                  }}>Cancel</Button>
+                  <Button type="submit" disabled={resetPasswordMutation.isPending || newPassword.length < 6} data-testid="button-confirm-reset-password">
+                    {resetPasswordMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Reset Password
                   </Button>
                 </DialogFooter>
               </form>

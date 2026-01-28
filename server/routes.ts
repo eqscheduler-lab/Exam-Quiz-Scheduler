@@ -264,6 +264,26 @@ export async function registerRoutes(
     }
   });
 
+  // Password Reset - Admin Only
+  app.post("/api/admin/users/:id/reset-password", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const userId = parseInt(req.params.id);
+      const { newPassword } = req.body;
+      
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(userId, { password: hashedPassword });
+      res.json({ message: "Password reset successfully" });
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      res.status(500).json({ message: error.message || "Failed to reset password" });
+    }
+  });
+
   // Factory Reset - Admin Only
   app.post("/api/admin/factory-reset", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
