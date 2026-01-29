@@ -123,31 +123,64 @@ export default function SchedulePage() {
     });
 
     const hasExam = cellExams && cellExams.length > 0;
+    
+    // Check if user can edit an exam (own booking or admin)
+    const canEditExam = (exam: any) => {
+      if (!user) return false;
+      if (user.role === "ADMIN") return true;
+      return exam.createdByUserId === user.id;
+    };
 
     return (
       <div className="h-full min-h-[100px] p-1 relative group">
         {hasExam ? (
           <div className="flex flex-col gap-1 h-full">
-            {cellExams.map((exam) => (
-              <ExamDialog 
-                key={exam.id} 
-                mode="edit" 
-                examId={exam.id}
-                defaultValues={exam}
-                trigger={
-                  <button className={cn(
-                    "w-full text-left p-2 rounded-md text-xs border transition-all hover:scale-[1.02]",
+            {cellExams.map((exam) => {
+              const isEditable = canEditExam(exam);
+              
+              // If user can edit, show the edit dialog
+              if (isEditable) {
+                return (
+                  <ExamDialog 
+                    key={exam.id} 
+                    mode="edit" 
+                    examId={exam.id}
+                    defaultValues={exam}
+                    trigger={
+                      <button className={cn(
+                        "w-full text-left p-2 rounded-md text-xs border transition-all hover:scale-[1.02]",
+                        exam.type === 'HOMEWORK' 
+                          ? "bg-purple-100 border-purple-200 text-purple-900 hover:bg-purple-200 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-100" 
+                          : "bg-amber-100 border-amber-200 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-100"
+                      )}>
+                        <div className="font-bold truncate">{exam.subject.code}</div>
+                        <div className="truncate opacity-80">{exam.class.name}</div>
+                        <div className="truncate opacity-80">{exam.type}</div>
+                      </button>
+                    }
+                  />
+                );
+              }
+              
+              // If user cannot edit, show read-only view (no click action)
+              return (
+                <div 
+                  key={exam.id}
+                  className={cn(
+                    "w-full text-left p-2 rounded-md text-xs border cursor-default",
                     exam.type === 'HOMEWORK' 
-                      ? "bg-purple-100 border-purple-200 text-purple-900 hover:bg-purple-200 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-100" 
-                      : "bg-amber-100 border-amber-200 text-amber-900 hover:bg-amber-200 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-100"
-                  )}>
-                    <div className="font-bold truncate">{exam.subject.code}</div>
-                    <div className="truncate opacity-80">{exam.class.name}</div>
-                    <div className="truncate opacity-80">{exam.type}</div>
-                  </button>
-                }
-              />
-            ))}
+                      ? "bg-purple-100 border-purple-200 text-purple-900 dark:bg-purple-900/30 dark:border-purple-800 dark:text-purple-100" 
+                      : "bg-amber-100 border-amber-200 text-amber-900 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-100"
+                  )}
+                  title={`Booked by: ${exam.creator?.name || 'Unknown'}`}
+                >
+                  <div className="font-bold truncate">{exam.subject.code}</div>
+                  <div className="truncate opacity-80">{exam.class.name}</div>
+                  <div className="truncate opacity-80">{exam.type}</div>
+                  <div className="truncate text-[10px] opacity-60 mt-1">By: {exam.creator?.name || 'Unknown'}</div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="h-full w-full opacity-0 group-hover:opacity-100 transition-opacity">
