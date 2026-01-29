@@ -3,7 +3,7 @@ import {
   users, subjects, students, examEvents, settings, classes, loginAudit,
   type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class, type LoginAudit, type InsertLoginAudit
 } from "@shared/schema";
-import { eq, and, count, gte, lte, desc } from "drizzle-orm";
+import { eq, and, count, gte, lte, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -193,16 +193,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getExamCountForClassDay(date: Date, classId: number): Promise<number> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use SQL DATE cast for timezone-safe comparison
+    const dateStr = date.toISOString().split('T')[0]; // Get YYYY-MM-DD
 
     const [result] = await db.select({ count: count() })
       .from(examEvents)
       .where(and(
-        gte(examEvents.date, startOfDay),
-        lte(examEvents.date, endOfDay),
+        sql`DATE(${examEvents.date}) = ${dateStr}`,
         eq(examEvents.classId, classId),
         eq(examEvents.status, "SCHEDULED")
       ));
@@ -211,16 +208,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getQuizCountForClassDay(date: Date, classId: number): Promise<number> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use SQL DATE cast for timezone-safe comparison
+    const dateStr = date.toISOString().split('T')[0]; // Get YYYY-MM-DD
 
     const [result] = await db.select({ count: count() })
       .from(examEvents)
       .where(and(
-        gte(examEvents.date, startOfDay),
-        lte(examEvents.date, endOfDay),
+        sql`DATE(${examEvents.date}) = ${dateStr}`,
         eq(examEvents.classId, classId),
         eq(examEvents.status, "SCHEDULED"),
         eq(examEvents.type, "QUIZ")
@@ -230,16 +224,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getExistingBooking(date: Date, period: number, classId: number): Promise<ExamEvent | null> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Use SQL DATE cast for timezone-safe comparison
+    const dateStr = date.toISOString().split('T')[0]; // Get YYYY-MM-DD
 
     const [existing] = await db.select()
       .from(examEvents)
       .where(and(
-        gte(examEvents.date, startOfDay),
-        lte(examEvents.date, endOfDay),
+        sql`DATE(${examEvents.date}) = ${dateStr}`,
         eq(examEvents.period, period),
         eq(examEvents.classId, classId),
         eq(examEvents.status, "SCHEDULED")
