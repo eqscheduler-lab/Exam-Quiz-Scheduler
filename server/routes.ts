@@ -112,9 +112,25 @@ export async function registerRoutes(
   app.patch(api.exams.update.path, async (req, res) => {
      if (!req.isAuthenticated()) return res.sendStatus(401);
      try {
+       const examId = Number(req.params.id);
+       const user = req.user as any;
+       
+       // Get the exam to check ownership
+       const exams = await storage.getExams({});
+       const exam = exams.find(e => e.id === examId);
+       
+       if (!exam) {
+         return res.status(404).json({ message: "Booking not found" });
+       }
+       
+       // Only allow creator or admin to modify
+       if (exam.createdByUserId !== user.id && user.role !== "ADMIN") {
+         return res.status(403).json({ message: "You can only modify your own bookings" });
+       }
+       
        const input = api.exams.update.input.parse(req.body);
-       const exam = await storage.updateExam(Number(req.params.id), input);
-       res.json(exam);
+       const updatedExam = await storage.updateExam(examId, input);
+       res.json(updatedExam);
      } catch (err) {
        res.status(400).json({ message: "Update failed" });
      }
