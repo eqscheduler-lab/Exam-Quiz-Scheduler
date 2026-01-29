@@ -58,12 +58,10 @@ export default function SchedulePage() {
   const selectedClass = classes?.find(c => c.id.toString() === selectedClassId);
   const gradeLevel = selectedClass ? getGradeLevel(selectedClass.name) : "G9_10";
 
-  const isTeacher = user?.role === "TEACHER";
-  
+  // All users see all bookings on the master schedule - no teacher filter
   const { data: exams, isLoading } = useExams({
     weekStart: weekStart.toISOString(),
     classId: selectedClassId !== "all" ? Number(selectedClassId) : undefined,
-    teacherId: isTeacher ? user?.id : undefined,
   });
 
   const handleExportPDF = async () => {
