@@ -73,6 +73,14 @@ export async function registerRoutes(
         });
       }
 
+      // Check if there's already a booking for this period/class/day
+      const existingBooking = await storage.getExistingBooking(date, input.period, input.classId);
+      if (existingBooking) {
+        return res.status(400).json({ 
+            message: "This period already has a booking for this class. Please choose another period." 
+        });
+      }
+
       // Only quizzes are limited to 1 per day per class; homework has no limit
       if (input.type === "QUIZ") {
         const quizCount = await storage.getQuizCountForClassDay(date, input.classId);
