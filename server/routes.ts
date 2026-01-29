@@ -63,6 +63,9 @@ export async function registerRoutes(
       const input = api.exams.create.input.parse(req.body);
       
       const date = new Date(input.date);
+      const dateStr = date.toISOString().split('T')[0];
+      console.log(`[BOOKING] Attempting to create ${input.type} for class ${input.classId} on ${dateStr} period ${input.period}`);
+      
       const dayOfWeek = getDay(date);
       const isFriday = dayOfWeek === 5;
       
@@ -75,6 +78,7 @@ export async function registerRoutes(
 
       // Check if there's already a booking for this period/class/day
       const existingBooking = await storage.getExistingBooking(date, input.period, input.classId);
+      console.log(`[BOOKING] Existing booking check: ${existingBooking ? 'FOUND - ' + existingBooking.title : 'None'}`);
       if (existingBooking) {
         return res.status(400).json({ 
             message: "This period already has a booking for this class. Please choose another period." 
@@ -84,6 +88,7 @@ export async function registerRoutes(
       // Only quizzes are limited to 1 per day per class; homework has no limit
       if (input.type === "QUIZ") {
         const quizCount = await storage.getQuizCountForClassDay(date, input.classId);
+        console.log(`[BOOKING] Quiz count for class ${input.classId} on ${dateStr}: ${quizCount}`);
         if (quizCount >= 1) {
           return res.status(400).json({ 
               message: "Only one quiz is allowed per class per day. Please choose another day." 

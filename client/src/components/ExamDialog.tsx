@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format, isSameDay } from "date-fns";
 import { CalendarIcon, Loader2, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -73,6 +74,7 @@ export function ExamDialog({
 }: ExamDialogProps) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
   const createExam = useCreateExam();
   const updateExam = useUpdateExam();
   const { data: subjects } = useSubjects();
@@ -149,6 +151,16 @@ export function ExamDialog({
   }, [existingExams, watchedDate, watchedClassId, mode, examId]);
 
   const onSubmit = async (data: ExamFormValues) => {
+    // Prevent submission if quiz is already booked for this class/day
+    if (data.type === "QUIZ" && quizAlreadyBooked) {
+      toast({
+        title: "Booking Failed",
+        description: "Only one quiz is allowed per class per day. Please choose another day or class.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       if (mode === "create") {
         await createExam.mutateAsync({
@@ -163,8 +175,15 @@ export function ExamDialog({
       }
       setOpen(false);
       form.reset();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      // Show server error to user
+      const message = error?.message || "Failed to save booking. Please try again.";
+      toast({
+        title: "Booking Failed",
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 
