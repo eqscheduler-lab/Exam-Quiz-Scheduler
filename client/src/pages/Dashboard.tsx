@@ -11,14 +11,12 @@ import { BELL_SCHEDULES, getGradeLevel } from "@shared/schema";
 export default function Dashboard() {
   const { user } = useAuth();
   
-  // Fetch exams for this week for the current user (if teacher) or all (if admin/leadership)
+  // Fetch all exams for this week - all users see all bookings on the master schedule
   const today = new Date();
   const weekStart = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd"); // Start of week (Monday)
-  const isTeacher = user?.role === "TEACHER";
   
   const { data: exams, isLoading } = useExams({
     weekStart: weekStart,
-    teacherId: isTeacher ? user?.id : undefined,
   });
 
   const todaysExams = exams?.filter(e => {
