@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle, Users, Calendar } from "lucide-react";
+import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle, Users, Calendar, TrendingUp } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,13 +51,15 @@ interface WeeklyUtilizationData {
   totalEntries: number;
 }
 
+type TabType = "overview" | "classes" | "subjects" | "teachers" | "trends";
+
 export default function Analytics() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState<string>("all");
-  const [selectedWeek, setSelectedWeek] = useState<string>("all");
   
   const { data: analytics, isLoading } = useQuery<AnalyticsData[]>({
     queryKey: ["/api/analytics"],
@@ -175,7 +177,7 @@ export default function Analytics() {
     quizzes: t.quizCount
   })) || [];
 
-  // Weekly trend data - aggregate by week
+  // Weekly trend data
   const weeklyTrendData = weeklyUtilization ? (() => {
     const weekMap = new Map<string, { weekStart: string; homework: number; quizzes: number; total: number }>();
     weeklyUtilization.forEach(w => {
@@ -212,6 +214,14 @@ export default function Analytics() {
     '#14b8a6', '#f97316', '#d946ef', '#06b6d4', '#ef4444'
   ];
 
+  const tabs: { id: TabType; label: string; icon: any }[] = [
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "classes", label: "By Class", icon: GraduationCap },
+    { id: "subjects", label: "By Subject", icon: BookOpen },
+    { id: "teachers", label: "By Teacher", icon: Users },
+    { id: "trends", label: "Weekly Trends", icon: TrendingUp },
+  ];
+
   return (
     <Layout title="System Analytics">
       <div className="space-y-6">
@@ -235,6 +245,23 @@ export default function Analytics() {
               Clear History
             </Button>
           )}
+        </div>
+
+        {/* Tab Buttons */}
+        <div className="flex flex-wrap gap-2 p-1 bg-muted rounded-lg">
+          {tabs.map((tab) => (
+            <Button
+              key={tab.id}
+              variant={activeTab === tab.id ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab(tab.id)}
+              className="gap-2"
+              data-testid={`tab-${tab.id}`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </Button>
+          ))}
         </div>
 
         <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
@@ -288,138 +315,142 @@ export default function Analytics() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <FileText className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Homework</p>
-                      <p className="text-2xl font-bold" data-testid="text-total-homework">{totalExams}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10">
-                      <ClipboardList className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Quizzes</p>
-                      <p className="text-2xl font-bold" data-testid="text-total-quizzes">{totalQuizzes}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-500/10">
-                      <GraduationCap className="w-5 h-5 text-green-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Classes</p>
-                      <p className="text-2xl font-bold" data-testid="text-total-classes">{uniqueClasses}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10">
-                      <BookOpen className="w-5 h-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Subjects</p>
-                      <p className="text-2xl font-bold" data-testid="text-total-subjects">{uniqueSubjects}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            {/* Overview Tab */}
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <FileText className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Homework</p>
+                          <p className="text-2xl font-bold" data-testid="text-total-homework">{totalExams}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-amber-500/10">
+                          <ClipboardList className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Quizzes</p>
+                          <p className="text-2xl font-bold" data-testid="text-total-quizzes">{totalQuizzes}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-green-500/10">
+                          <GraduationCap className="w-5 h-5 text-green-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Classes</p>
+                          <p className="text-2xl font-bold" data-testid="text-total-classes">{uniqueClasses}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-500/10">
+                          <BookOpen className="w-5 h-5 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Subjects</p>
+                          <p className="text-2xl font-bold" data-testid="text-total-subjects">{uniqueSubjects}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
 
-            {/* Overview Pie Chart */}
-            {pieChartData.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5" />
-                    Distribution Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieChartData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {pieChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
+                {pieChartData.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5" />
+                        Distribution Overview
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={pieChartData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {pieChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
-            {/* Class Chart and Table */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5" />
-                    By Class - Chart
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {classChartData.length > 0 ? (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={classChartData} layout="vertical" margin={{ left: 20 }}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" />
-                          <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
-                          <Tooltip />
-                          <Legend />
-                          <Bar dataKey="Homework" fill={COLORS.homework} />
-                          <Bar dataKey="Quizzes" fill={COLORS.quiz} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">No data available</p>
-                  )}
-                </CardContent>
-              </Card>
+            {/* Classes Tab */}
+            {activeTab === "classes" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <GraduationCap className="w-5 h-5" />
+                      By Class - Chart
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {classChartData.length > 0 ? (
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={classChartData} layout="vertical" margin={{ left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" />
+                            <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="Homework" fill={COLORS.homework} />
+                            <Bar dataKey="Quizzes" fill={COLORS.quiz} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No data available</p>
+                    )}
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5" />
-                    By Class - Table
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="max-h-64 overflow-y-auto">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <GraduationCap className="w-5 h-5" />
+                      By Class - Table
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <Table>
-                      <TableHeader className="sticky top-0 bg-background">
+                      <TableHeader>
                         <TableRow>
                           <TableHead>Class</TableHead>
                           <TableHead className="text-right">Homework</TableHead>
@@ -451,21 +482,52 @@ export default function Analytics() {
                         )}
                       </TableBody>
                     </Table>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    By Subject - Table
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="max-h-64 overflow-y-auto">
+            {/* Subjects Tab */}
+            {activeTab === "subjects" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      By Course Code - Chart
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {subjectChartData.length > 0 ? (
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={subjectChartData} margin={{ bottom: 60 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="Homework" fill={COLORS.homework} />
+                            <Bar dataKey="Quizzes" fill={COLORS.quiz} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No data available</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      By Subject - Table
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <Table>
-                      <TableHeader className="sticky top-0 bg-background">
+                      <TableHeader>
                         <TableRow>
                           <TableHead>Subject</TableHead>
                           <TableHead className="text-right">Homework</TableHead>
@@ -497,404 +559,222 @@ export default function Analytics() {
                         )}
                       </TableBody>
                     </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-            {/* Course Code Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  By Course Code - Chart
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {subjectChartData.length > 0 ? (
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={subjectChartData} margin={{ bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="Homework" fill={COLORS.homework} />
-                        <Bar dataKey="Quizzes" fill={COLORS.quiz} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No data available</p>
-                )}
-              </CardContent>
-            </Card>
+            {/* Teachers Tab */}
+            {activeTab === "teachers" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Teacher Analytics
+                      </div>
+                      <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                        <SelectTrigger className="w-48" data-testid="select-teacher-filter">
+                          <SelectValue placeholder="Select teacher" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Teachers</SelectItem>
+                          {uniqueTeachers.map(teacher => (
+                            <SelectItem key={teacher.id} value={String(teacher.id)}>
+                              {teacher.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingTeachers ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                    ) : teacherChartData.length > 0 ? (
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={teacherChartData} layout="vertical" margin={{ left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" />
+                            <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="Homework" fill={COLORS.homework} />
+                            <Bar dataKey="Quizzes" fill={COLORS.quiz} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No data available</p>
+                    )}
+                  </CardContent>
+                </Card>
 
-            {/* Teacher Analytics Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Teacher Analytics
-                  </div>
-                  <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                    <SelectTrigger className="w-48" data-testid="select-teacher-filter">
-                      <SelectValue placeholder="Select teacher" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Teachers</SelectItem>
-                      {uniqueTeachers.map(teacher => (
-                        <SelectItem key={teacher.id} value={String(teacher.id)}>
-                          {teacher.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingTeachers ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : teacherChartData.length > 0 ? (
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={teacherChartData} margin={{ bottom: 60 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="Homework" fill={COLORS.homework} />
-                        <Bar dataKey="Quizzes" fill={COLORS.quiz} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No teacher data available</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Teacher Class Breakdown Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Teacher-Class Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-64 overflow-y-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-background">
-                      <TableRow>
-                        <TableHead>Teacher</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead className="text-right">Homework</TableHead>
-                        <TableHead className="text-right">Quizzes</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {teacherClassBreakdown.length > 0 ? teacherClassBreakdown.map((row, idx) => (
-                        <TableRow key={idx} data-testid={`row-teacher-${idx}`}>
-                          <TableCell className="font-medium">{row.teacherName}</TableCell>
-                          <TableCell>{row.className}</TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="secondary">{row.homework}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant="outline">{row.quizzes}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-bold">{row.homework + row.quizzes}</TableCell>
-                        </TableRow>
-                      )) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                            No data available
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Detailed Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="max-h-64 overflow-y-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-background">
-                      <TableRow>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead className="text-right">Homework</TableHead>
-                        <TableHead className="text-right">Quizzes</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {analytics?.map((item, idx) => (
-                        <TableRow key={`${item.classId}-${item.subjectId}`} data-testid={`row-detail-${idx}`}>
-                          <TableCell className="font-medium">{item.className}</TableCell>
-                          <TableCell>{item.subjectName}</TableCell>
-                          <TableCell className="text-right">{item.examCount}</TableCell>
-                          <TableCell className="text-right">{item.quizCount}</TableCell>
-                        </TableRow>
-                      ))}
-                      {(!analytics || analytics.length === 0) && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                            No homework or quizzes have been scheduled yet
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Weekly Trend Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5" />
-                    Weekly Activity Trend
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingWeekly ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    </div>
-                  ) : weeklyTrendData.length > 0 ? (
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={weeklyTrendData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                          <YAxis />
-                          <Tooltip />
-                          <Legend />
-                          <Area type="monotone" dataKey="homework" name="Homework" stackId="1" stroke={COLORS.homework} fill={COLORS.homework} fillOpacity={0.6} />
-                          <Area type="monotone" dataKey="quizzes" name="Quizzes" stackId="1" stroke={COLORS.quiz} fill={COLORS.quiz} fillOpacity={0.6} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">No weekly data available</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Staff Contribution Share
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingWeekly ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    </div>
-                  ) : teacherUtilizationData.length > 0 ? (
-                    <div className="h-72">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart 
-                          data={teacherUtilizationData.slice(0, 10)} 
-                          layout="vertical"
-                          margin={{ left: 20, right: 20 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" />
-                          <YAxis 
-                            dataKey="name" 
-                            type="category" 
-                            width={100} 
-                            tick={{ fontSize: 11 }}
-                            tickFormatter={(value) => value.length > 12 ? value.slice(0, 12) + '...' : value}
-                          />
-                          <Tooltip 
-                            formatter={(value: number) => [`${value} entries`, 'Total']}
-                          />
-                          <Bar 
-                            dataKey="value" 
-                            name="Entries"
-                            radius={[0, 4, 4, 0]}
-                          >
-                            {teacherUtilizationData.slice(0, 10).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={TEACHER_COLORS[index % TEACHER_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">No staff data available</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Weekly Entries Per Teacher Bar Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" />
-                  Entries Per Teacher by Week
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingWeekly ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : weeklyUtilization && weeklyUtilization.length > 0 ? (
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart 
-                        data={weeklyUtilization
-                          .filter(w => selectedWeek === "all" || w.weekStart === selectedWeek)
-                          .sort((a, b) => a.teacherName.localeCompare(b.teacherName))} 
-                        margin={{ bottom: 60 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="teacherName" 
-                          tick={{ fontSize: 10 }} 
-                          angle={-45} 
-                          textAnchor="end" 
-                          height={80}
-                          interval={0}
-                        />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value, name) => [value, name === 'homeworkCount' ? 'Homework' : 'Quizzes']}
-                          labelFormatter={(label) => `Teacher: ${label}`}
-                        />
-                        <Legend formatter={(value) => value === 'homeworkCount' ? 'Homework' : 'Quizzes'} />
-                        <Bar dataKey="homeworkCount" name="homeworkCount" fill={COLORS.homework} />
-                        <Bar dataKey="quizCount" name="quizCount" fill={COLORS.quiz} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <p className="text-center text-muted-foreground py-8">No data available</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Weekly Staff Utilization Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5" />
-                    Weekly Staff Utilization Details
-                  </div>
-                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-                    <SelectTrigger className="w-48" data-testid="select-week-filter">
-                      <SelectValue placeholder="Select week" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Weeks</SelectItem>
-                      {weeklyUtilization && Array.from(new Set(weeklyUtilization.map(w => w.weekStart))).map(week => (
-                        <SelectItem key={week} value={week}>
-                          Week of {new Date(week).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingWeekly ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : (
-                  <div className="max-h-80 overflow-y-auto">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Teacher - Class Breakdown
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <Table>
-                      <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableHeader>
                         <TableRow>
                           <TableHead>Teacher</TableHead>
-                          <TableHead>Week Starting</TableHead>
+                          <TableHead>Class</TableHead>
                           <TableHead className="text-right">Homework</TableHead>
                           <TableHead className="text-right">Quizzes</TableHead>
-                          <TableHead className="text-right">Total Entries</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {weeklyUtilization && weeklyUtilization
-                          .filter(w => selectedWeek === "all" || w.weekStart === selectedWeek)
-                          .map((row, idx) => (
-                          <TableRow key={`${row.teacherId}-${row.weekStart}`} data-testid={`row-weekly-${idx}`}>
-                            <TableCell className="font-medium">{row.teacherName}</TableCell>
-                            <TableCell>
-                              {new Date(row.weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant="secondary">{row.homeworkCount}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Badge variant="outline">{row.quizCount}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-bold">{row.totalEntries}</TableCell>
-                          </TableRow>
-                        ))}
-                        {(!weeklyUtilization || weeklyUtilization.filter(w => selectedWeek === "all" || w.weekStart === selectedWeek).length === 0) && (
+                        {teacherClassBreakdown.length > 0 ? (
+                          teacherClassBreakdown.map((row, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{row.teacherName}</TableCell>
+                              <TableCell>{row.className}</TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant="secondary">{row.homework}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant="outline">{row.quizzes}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-bold">{row.homework + row.quizzes}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
                           <TableRow>
                             <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
-                              No weekly data available
+                              No data available
                             </TableCell>
                           </TableRow>
                         )}
                       </TableBody>
                     </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Staff Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {teacherSummary && Object.entries(teacherSummary).map(([id, data]) => (
-                <Card key={id} className="hover-elevate" data-testid={`card-teacher-summary-${id}`}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                        {data.teacherName.charAt(0)}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg">{data.teacherName}</h3>
-                        <p className="text-sm text-muted-foreground">{data.classes.size} class{data.classes.size !== 1 ? 'es' : ''}</p>
-                        <div className="flex gap-3 mt-2">
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-purple-500" />
-                            <span className="text-sm">{data.homework} HW</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span className="text-sm">{data.quizzes} Quiz</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+
+                {teacherUtilizationData.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Teacher Utilization Share
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={teacherUtilizationData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {teacherUtilizationData.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={TEACHER_COLORS[index % TEACHER_COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Weekly Trends Tab */}
+            {activeTab === "trends" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Weekly Activity Trend
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingWeekly ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                    ) : weeklyTrendData.length > 0 ? (
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={weeklyTrendData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Area type="monotone" dataKey="homework" name="Homework" stroke={COLORS.homework} fill={COLORS.homework} fillOpacity={0.3} />
+                            <Area type="monotone" dataKey="quizzes" name="Quizzes" stroke={COLORS.quiz} fill={COLORS.quiz} fillOpacity={0.3} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">No data available</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Weekly Summary Table
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Week Starting</TableHead>
+                          <TableHead className="text-right">Homework</TableHead>
+                          <TableHead className="text-right">Quizzes</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {weeklyTrendData.length > 0 ? (
+                          weeklyTrendData.map((week, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{week.name}</TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant="secondary">{week.homework}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Badge variant="outline">{week.quizzes}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-bold">{week.total}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
+                              No data available
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </>
         )}
       </div>
