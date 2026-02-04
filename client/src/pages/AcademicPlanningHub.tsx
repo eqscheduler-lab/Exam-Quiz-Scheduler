@@ -837,128 +837,147 @@ export default function AcademicPlanningHub() {
                       No entries for this term and week
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Grade</TableHead>
-                          <TableHead>Class</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Teams Link</TableHead>
-                          <TableHead>SAPET Day</TableHead>
-                          <TableHead>SAPET Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {support.map((s) => (
-                          <TableRow key={s.id} data-testid={`row-support-${s.id}`}>
-                            <TableCell>G{s.grade}</TableCell>
-                            <TableCell>{s.class.name}</TableCell>
-                            <TableCell>{s.subject.code}</TableCell>
-                            <TableCell>
-                              {s.sessionType === "online" ? "Online" : s.sessionType === "in_school" ? "In School" : "-"}
-                            </TableCell>
-                            <TableCell>
-                              {s.teamsLink ? (
-                                <a 
-                                  href={s.teamsLink} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-primary hover:underline"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Open
-                                </a>
-                              ) : "-"}
-                            </TableCell>
-                            <TableCell>{s.sapetDay || "-"}</TableCell>
-                            <TableCell>
-                              {s.sapetDate ? format(new Date(s.sapetDate), "MMM d") : "-"}
-                            </TableCell>
-                            <TableCell>{getStatusBadge(s.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {s.status === "DRAFT" && s.teacherId === user?.id && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => submitSupportMutation.mutate(s.id)}
-                                    title="Submit for approval"
-                                    data-testid={`button-submit-support-${s.id}`}
-                                  >
-                                    <Send className="w-4 h-4" />
-                                  </Button>
-                                )}
-                                {canApprove && s.status === "PENDING_APPROVAL" && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-green-600"
-                                      onClick={() => {
-                                        setApprovalAction({ type: "support", id: s.id, action: "approve" });
-                                        setApprovalComments("");
-                                        setApprovalDialogOpen(true);
-                                      }}
-                                      title="Approve"
-                                      data-testid={`button-approve-support-${s.id}`}
-                                    >
-                                      <Check className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-red-600"
-                                      onClick={() => {
-                                        setApprovalAction({ type: "support", id: s.id, action: "reject" });
-                                        setApprovalComments("");
-                                        setApprovalDialogOpen(true);
-                                      }}
-                                      title="Reject"
-                                      data-testid={`button-reject-support-${s.id}`}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
-                                {(s.teacherId === user?.id || user?.role === "ADMIN") && s.status !== "APPROVED" && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => {
-                                        setEditingSupport(s);
-                                        setSupportDialogOpen(true);
-                                      }}
-                                      title="Edit"
-                                      data-testid={`button-edit-support-${s.id}`}
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-red-600"
-                                      onClick={() => {
-                                        if (confirm("Delete this entry?")) {
-                                          deleteSupportMutation.mutate(s.id);
-                                        }
-                                      }}
-                                      title="Delete"
-                                      data-testid={`button-delete-support-${s.id}`}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                    <div className="overflow-x-auto">
+                      <div className="grid grid-cols-6 gap-2 min-w-[900px]">
+                        <div className="font-semibold text-sm p-2 bg-muted rounded-md text-center">Time</div>
+                        {DAYS.map(day => (
+                          <div key={day} className="font-semibold text-sm p-2 bg-muted rounded-md text-center">{day}</div>
                         ))}
-                      </TableBody>
-                    </Table>
+                        
+                        {(() => {
+                          const supportByDay: Record<string, typeof support> = {};
+                          DAYS.forEach(day => { supportByDay[day] = []; });
+                          support.forEach(s => {
+                            if (s.sapetDay && supportByDay[s.sapetDay]) {
+                              supportByDay[s.sapetDay].push(s);
+                            }
+                          });
+                          const unscheduled = support.filter(s => !s.sapetDay);
+                          const maxSessions = Math.max(1, ...DAYS.map(d => supportByDay[d].length));
+                          
+                          return (
+                            <>
+                              {Array.from({ length: maxSessions }).map((_, rowIdx) => (
+                                <>
+                                  <div key={`time-${rowIdx}`} className="text-xs p-2 bg-muted/50 rounded-md flex items-center justify-center">
+                                    Session {rowIdx + 1}
+                                  </div>
+                                  {DAYS.map(day => {
+                                    const session = supportByDay[day][rowIdx];
+                                    if (!session) {
+                                      return <div key={`${day}-${rowIdx}`} className="p-2 border border-dashed border-muted rounded-md min-h-[120px]" />;
+                                    }
+                                    return (
+                                      <div 
+                                        key={session.id} 
+                                        className="p-3 border rounded-md min-h-[120px] bg-card hover-elevate"
+                                        data-testid={`cell-support-${session.id}`}
+                                      >
+                                        <div className="space-y-1.5">
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-medium text-sm">G{session.grade} - {session.class.name}</span>
+                                            {getStatusBadge(session.status)}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">{session.subject.code} - {session.subject.name}</div>
+                                          <div className="text-xs">
+                                            <Badge variant="outline" className="text-xs">
+                                              {session.sessionType === "online" ? "Online" : session.sessionType === "in_school" ? "In School" : "TBD"}
+                                            </Badge>
+                                          </div>
+                                          {session.sapetTime && (
+                                            <div className="text-xs text-muted-foreground">Time: {session.sapetTime}</div>
+                                          )}
+                                          {session.sapetDate && (
+                                            <div className="text-xs text-muted-foreground">Date: {format(new Date(session.sapetDate), "MMM d")}</div>
+                                          )}
+                                          {session.teamsLink && (
+                                            <a 
+                                              href={session.teamsLink} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-1 text-xs text-primary hover:underline"
+                                            >
+                                              <ExternalLink className="w-3 h-3" />
+                                              Teams Link
+                                            </a>
+                                          )}
+                                          <div className="flex items-center gap-1 pt-1">
+                                            {session.status === "DRAFT" && session.teacherId === user?.id && (
+                                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => submitSupportMutation.mutate(session.id)} title="Submit">
+                                                <Send className="w-3 h-3" />
+                                              </Button>
+                                            )}
+                                            {canApprove && session.status === "PENDING_APPROVAL" && (
+                                              <>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-green-600" onClick={() => { setApprovalAction({ type: "support", id: session.id, action: "approve" }); setApprovalComments(""); setApprovalDialogOpen(true); }} title="Approve">
+                                                  <Check className="w-3 h-3" />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600" onClick={() => { setApprovalAction({ type: "support", id: session.id, action: "reject" }); setApprovalComments(""); setApprovalDialogOpen(true); }} title="Reject">
+                                                  <X className="w-3 h-3" />
+                                                </Button>
+                                              </>
+                                            )}
+                                            {(session.teacherId === user?.id || user?.role === "ADMIN") && session.status !== "APPROVED" && (
+                                              <>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingSupport(session); setSupportDialogOpen(true); }} title="Edit">
+                                                  <Edit className="w-3 h-3" />
+                                                </Button>
+                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600" onClick={() => { if (confirm("Delete?")) deleteSupportMutation.mutate(session.id); }} title="Delete">
+                                                  <Trash2 className="w-3 h-3" />
+                                                </Button>
+                                              </>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </>
+                              ))}
+                              {unscheduled.length > 0 && (
+                                <>
+                                  <div className="col-span-6 mt-4 pt-4 border-t">
+                                    <h4 className="font-medium text-sm mb-2">Unscheduled Sessions</h4>
+                                  </div>
+                                  {unscheduled.map(session => (
+                                    <div 
+                                      key={session.id} 
+                                      className="col-span-6 p-3 border rounded-md bg-card flex items-center justify-between gap-4"
+                                      data-testid={`cell-unscheduled-${session.id}`}
+                                    >
+                                      <div className="flex items-center gap-4">
+                                        <span className="font-medium text-sm">G{session.grade} - {session.class.name}</span>
+                                        <span className="text-xs text-muted-foreground">{session.subject.code}</span>
+                                        <Badge variant="outline" className="text-xs">
+                                          {session.sessionType === "online" ? "Online" : session.sessionType === "in_school" ? "In School" : "TBD"}
+                                        </Badge>
+                                        {getStatusBadge(session.status)}
+                                        {session.teamsLink && (
+                                          <a href={session.teamsLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
+                                            <ExternalLink className="w-3 h-3" /> Teams
+                                          </a>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        {session.status === "DRAFT" && session.teacherId === user?.id && (
+                                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => submitSupportMutation.mutate(session.id)}><Send className="w-3 h-3" /></Button>
+                                        )}
+                                        {(session.teacherId === user?.id || user?.role === "ADMIN") && session.status !== "APPROVED" && (
+                                          <>
+                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingSupport(session); setSupportDialogOpen(true); }}><Edit className="w-3 h-3" /></Button>
+                                            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600" onClick={() => { if (confirm("Delete?")) deleteSupportMutation.mutate(session.id); }}><Trash2 className="w-3 h-3" /></Button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
