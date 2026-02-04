@@ -1,7 +1,8 @@
 import { db } from "./db";
 import {
-  users, subjects, students, examEvents, settings, classes, loginAudit,
-  type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class, type LoginAudit, type InsertLoginAudit
+  users, subjects, students, examEvents, settings, classes, loginAudit, learningSummaries, learningSupport,
+  type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class, type LoginAudit, type InsertLoginAudit,
+  type LearningSummary, type InsertLearningSummary, type LearningSupport, type InsertLearningSupport
 } from "@shared/schema";
 import { eq, and, count, gte, lte, desc, sql } from "drizzle-orm";
 
@@ -69,6 +70,20 @@ export interface IStorage {
   updateLastAccessedAt(userId: number): Promise<void>;
   getInactiveAccounts(): Promise<User[]>;
   markAccountInactive(userId: number): Promise<User>;
+
+  // Learning Summaries
+  getLearningSummaries(filters?: { term?: string; weekNumber?: number }): Promise<(LearningSummary & { class: Class; subject: Subject; teacher: User })[]>;
+  createLearningSummary(summary: InsertLearningSummary): Promise<LearningSummary>;
+  updateLearningSummary(id: number, summary: Partial<InsertLearningSummary>): Promise<LearningSummary>;
+  deleteLearningSummary(id: number): Promise<void>;
+  getLearningSummaryById(id: number): Promise<(LearningSummary & { class: Class; subject: Subject; teacher: User }) | undefined>;
+
+  // Learning Support (SAPET)
+  getLearningSupport(filters?: { term?: string; weekNumber?: number }): Promise<(LearningSupport & { class: Class; subject: Subject; teacher: User })[]>;
+  createLearningSupport(support: InsertLearningSupport): Promise<LearningSupport>;
+  updateLearningSupport(id: number, support: Partial<InsertLearningSupport>): Promise<LearningSupport>;
+  deleteLearningSupport(id: number): Promise<void>;
+  getLearningSupportById(id: number): Promise<(LearningSupport & { class: Class; subject: Subject; teacher: User }) | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -457,6 +472,152 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return updatedUser;
+  }
+
+  // Learning Summaries
+  async getLearningSummaries(filters?: { term?: string; weekNumber?: number }): Promise<(LearningSummary & { class: Class; subject: Subject; teacher: User })[]> {
+    const conditions = [];
+    
+    if (filters?.term) {
+      conditions.push(eq(learningSummaries.term, filters.term as "TERM_1" | "TERM_2" | "TERM_3"));
+    }
+    if (filters?.weekNumber) {
+      conditions.push(eq(learningSummaries.weekNumber, filters.weekNumber));
+    }
+
+    const results = await db.select({
+      summary: learningSummaries,
+      class: classes,
+      subject: subjects,
+      teacher: users
+    })
+    .from(learningSummaries)
+    .innerJoin(classes, eq(learningSummaries.classId, classes.id))
+    .innerJoin(subjects, eq(learningSummaries.subjectId, subjects.id))
+    .innerJoin(users, eq(learningSummaries.teacherId, users.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(learningSummaries.grade, classes.name);
+
+    return results.map(r => ({
+      ...r.summary,
+      class: r.class,
+      subject: r.subject,
+      teacher: r.teacher
+    }));
+  }
+
+  async createLearningSummary(summary: InsertLearningSummary): Promise<LearningSummary> {
+    const [newSummary] = await db.insert(learningSummaries).values(summary).returning();
+    return newSummary;
+  }
+
+  async updateLearningSummary(id: number, summary: Partial<InsertLearningSummary>): Promise<LearningSummary> {
+    const [updatedSummary] = await db.update(learningSummaries)
+      .set({ ...summary, updatedAt: new Date() })
+      .where(eq(learningSummaries.id, id))
+      .returning();
+    return updatedSummary;
+  }
+
+  async deleteLearningSummary(id: number): Promise<void> {
+    await db.delete(learningSummaries).where(eq(learningSummaries.id, id));
+  }
+
+  async getLearningSummaryById(id: number): Promise<(LearningSummary & { class: Class; subject: Subject; teacher: User }) | undefined> {
+    const results = await db.select({
+      summary: learningSummaries,
+      class: classes,
+      subject: subjects,
+      teacher: users
+    })
+    .from(learningSummaries)
+    .innerJoin(classes, eq(learningSummaries.classId, classes.id))
+    .innerJoin(subjects, eq(learningSummaries.subjectId, subjects.id))
+    .innerJoin(users, eq(learningSummaries.teacherId, users.id))
+    .where(eq(learningSummaries.id, id))
+    .limit(1);
+
+    if (results.length === 0) return undefined;
+    
+    return {
+      ...results[0].summary,
+      class: results[0].class,
+      subject: results[0].subject,
+      teacher: results[0].teacher
+    };
+  }
+
+  // Learning Support (SAPET)
+  async getLearningSupport(filters?: { term?: string; weekNumber?: number }): Promise<(LearningSupport & { class: Class; subject: Subject; teacher: User })[]> {
+    const conditions = [];
+    
+    if (filters?.term) {
+      conditions.push(eq(learningSupport.term, filters.term as "TERM_1" | "TERM_2" | "TERM_3"));
+    }
+    if (filters?.weekNumber) {
+      conditions.push(eq(learningSupport.weekNumber, filters.weekNumber));
+    }
+
+    const results = await db.select({
+      support: learningSupport,
+      class: classes,
+      subject: subjects,
+      teacher: users
+    })
+    .from(learningSupport)
+    .innerJoin(classes, eq(learningSupport.classId, classes.id))
+    .innerJoin(subjects, eq(learningSupport.subjectId, subjects.id))
+    .innerJoin(users, eq(learningSupport.teacherId, users.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(learningSupport.grade, classes.name);
+
+    return results.map(r => ({
+      ...r.support,
+      class: r.class,
+      subject: r.subject,
+      teacher: r.teacher
+    }));
+  }
+
+  async createLearningSupport(support: InsertLearningSupport): Promise<LearningSupport> {
+    const [newSupport] = await db.insert(learningSupport).values(support).returning();
+    return newSupport;
+  }
+
+  async updateLearningSupport(id: number, support: Partial<InsertLearningSupport>): Promise<LearningSupport> {
+    const [updatedSupport] = await db.update(learningSupport)
+      .set({ ...support, updatedAt: new Date() })
+      .where(eq(learningSupport.id, id))
+      .returning();
+    return updatedSupport;
+  }
+
+  async deleteLearningSupport(id: number): Promise<void> {
+    await db.delete(learningSupport).where(eq(learningSupport.id, id));
+  }
+
+  async getLearningSupportById(id: number): Promise<(LearningSupport & { class: Class; subject: Subject; teacher: User }) | undefined> {
+    const results = await db.select({
+      support: learningSupport,
+      class: classes,
+      subject: subjects,
+      teacher: users
+    })
+    .from(learningSupport)
+    .innerJoin(classes, eq(learningSupport.classId, classes.id))
+    .innerJoin(subjects, eq(learningSupport.subjectId, subjects.id))
+    .innerJoin(users, eq(learningSupport.teacherId, users.id))
+    .where(eq(learningSupport.id, id))
+    .limit(1);
+
+    if (results.length === 0) return undefined;
+    
+    return {
+      ...results[0].support,
+      class: results[0].class,
+      subject: results[0].subject,
+      teacher: results[0].teacher
+    };
   }
 }
 

@@ -1347,6 +1347,586 @@ export async function registerRoutes(
 
   await seed();
 
+  // === LEARNING SUMMARIES ===
+  app.get("/api/learning-summaries", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const filters: { term?: string; weekNumber?: number } = {};
+      if (req.query.term) filters.term = req.query.term as string;
+      if (req.query.weekNumber) filters.weekNumber = Number(req.query.weekNumber);
+      
+      const summaries = await storage.getLearningSummaries(filters);
+      res.json(summaries);
+    } catch (err) {
+      console.error("Get learning summaries error:", err);
+      res.status(500).json({ message: "Failed to fetch learning summaries" });
+    }
+  });
+
+  app.post("/api/learning-summaries", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const user = req.user as any;
+      const summary = await storage.createLearningSummary({
+        ...req.body,
+        teacherId: user.id,
+        status: "DRAFT"
+      });
+      res.status(201).json(summary);
+    } catch (err) {
+      console.error("Create learning summary error:", err);
+      res.status(500).json({ message: "Failed to create learning summary" });
+    }
+  });
+
+  app.patch("/api/learning-summaries/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const id = Number(req.params.id);
+      const user = req.user as any;
+      const existing = await storage.getLearningSummaryById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning summary not found" });
+      }
+      
+      // Teachers can only edit their own drafts
+      if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+        if (existing.teacherId !== user.id) {
+          return res.status(403).json({ message: "You can only edit your own entries" });
+        }
+      }
+      
+      // If editing an approved entry, revert to pending approval
+      let updateData = { ...req.body };
+      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+        updateData.status = "PENDING_APPROVAL";
+      }
+      
+      const summary = await storage.updateLearningSummary(id, updateData);
+      res.json(summary);
+    } catch (err) {
+      console.error("Update learning summary error:", err);
+      res.status(500).json({ message: "Failed to update learning summary" });
+    }
+  });
+
+  app.delete("/api/learning-summaries/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const id = Number(req.params.id);
+      const user = req.user as any;
+      const existing = await storage.getLearningSummaryById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning summary not found" });
+      }
+      
+      // Only creator or admin can delete
+      if (existing.teacherId !== user.id && user.role !== "ADMIN") {
+        return res.status(403).json({ message: "You can only delete your own entries" });
+      }
+      
+      await storage.deleteLearningSummary(id);
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Delete learning summary error:", err);
+      res.status(500).json({ message: "Failed to delete learning summary" });
+    }
+  });
+
+  // Submit for approval
+  app.post("/api/learning-summaries/:id/submit", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getLearningSummaryById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning summary not found" });
+      }
+      
+      const summary = await storage.updateLearningSummary(id, { status: "PENDING_APPROVAL" });
+      res.json(summary);
+    } catch (err) {
+      console.error("Submit learning summary error:", err);
+      res.status(500).json({ message: "Failed to submit for approval" });
+    }
+  });
+
+  // Approve learning summary (Admin/VP only)
+  app.post("/api/learning-summaries/:id/approve", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const user = req.user as any;
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      return res.status(403).json({ message: "Only Admin or Vice Principal can approve" });
+    }
+    
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getLearningSummaryById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning summary not found" });
+      }
+      
+      // Create exam in scheduler if quiz date is set
+      let linkedExamId = existing.linkedExamId;
+      if (existing.quizDate) {
+        const dayOfWeek = getDay(new Date(existing.quizDate));
+        const isFriday = dayOfWeek === 5;
+        
+        const examData = {
+          title: `Quiz - ${existing.subject.code}`,
+          type: "QUIZ" as const,
+          date: new Date(existing.quizDate),
+          period: 1,
+          classId: existing.classId,
+          subjectId: existing.subjectId,
+          createdByUserId: existing.teacherId,
+          status: "SCHEDULED" as const,
+          notes: `Auto-created from Learning Summary. Topics: ${existing.upcomingTopics || 'N/A'}`
+        };
+        
+        if (!linkedExamId) {
+          const newExam = await storage.createExam(examData);
+          linkedExamId = newExam.id;
+        }
+      }
+      
+      const summary = await storage.updateLearningSummary(id, { 
+        status: "APPROVED",
+        approvedById: user.id,
+        approvalComments: req.body.comments || null,
+        linkedExamId
+      });
+      res.json(summary);
+    } catch (err) {
+      console.error("Approve learning summary error:", err);
+      res.status(500).json({ message: "Failed to approve" });
+    }
+  });
+
+  // Reject learning summary (Admin/VP only)
+  app.post("/api/learning-summaries/:id/reject", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const user = req.user as any;
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      return res.status(403).json({ message: "Only Admin or Vice Principal can reject" });
+    }
+    
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getLearningSummaryById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning summary not found" });
+      }
+      
+      // Remove from scheduler if previously approved
+      if (existing.linkedExamId) {
+        await storage.updateExam(existing.linkedExamId, { status: "CANCELLED" });
+      }
+      
+      const summary = await storage.updateLearningSummary(id, { 
+        status: "REJECTED",
+        approvedById: user.id,
+        approvalComments: req.body.comments || null,
+        linkedExamId: null
+      });
+      res.json(summary);
+    } catch (err) {
+      console.error("Reject learning summary error:", err);
+      res.status(500).json({ message: "Failed to reject" });
+    }
+  });
+
+  // === LEARNING SUPPORT (SAPET) ===
+  app.get("/api/learning-support", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const filters: { term?: string; weekNumber?: number } = {};
+      if (req.query.term) filters.term = req.query.term as string;
+      if (req.query.weekNumber) filters.weekNumber = Number(req.query.weekNumber);
+      
+      const support = await storage.getLearningSupport(filters);
+      res.json(support);
+    } catch (err) {
+      console.error("Get learning support error:", err);
+      res.status(500).json({ message: "Failed to fetch learning support" });
+    }
+  });
+
+  app.post("/api/learning-support", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const user = req.user as any;
+      
+      // Validate Teams link if provided
+      if (req.body.teamsLink) {
+        const urlRegex = /^https?:\/\/.+/i;
+        if (!urlRegex.test(req.body.teamsLink)) {
+          return res.status(400).json({ message: "Invalid Teams link URL" });
+        }
+      }
+      
+      const support = await storage.createLearningSupport({
+        ...req.body,
+        teacherId: user.id,
+        status: "DRAFT"
+      });
+      res.status(201).json(support);
+    } catch (err) {
+      console.error("Create learning support error:", err);
+      res.status(500).json({ message: "Failed to create learning support" });
+    }
+  });
+
+  app.patch("/api/learning-support/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const id = Number(req.params.id);
+      const user = req.user as any;
+      const existing = await storage.getLearningSupportById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning support not found" });
+      }
+      
+      // Teachers can only edit their own entries
+      if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+        if (existing.teacherId !== user.id) {
+          return res.status(403).json({ message: "You can only edit your own entries" });
+        }
+      }
+      
+      // Validate Teams link if provided
+      if (req.body.teamsLink) {
+        const urlRegex = /^https?:\/\/.+/i;
+        if (!urlRegex.test(req.body.teamsLink)) {
+          return res.status(400).json({ message: "Invalid Teams link URL" });
+        }
+      }
+      
+      // If editing an approved entry, revert to pending approval
+      let updateData = { ...req.body };
+      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+        updateData.status = "PENDING_APPROVAL";
+      }
+      
+      const support = await storage.updateLearningSupport(id, updateData);
+      res.json(support);
+    } catch (err) {
+      console.error("Update learning support error:", err);
+      res.status(500).json({ message: "Failed to update learning support" });
+    }
+  });
+
+  app.delete("/api/learning-support/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const id = Number(req.params.id);
+      const user = req.user as any;
+      const existing = await storage.getLearningSupportById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning support not found" });
+      }
+      
+      // Only creator or admin can delete
+      if (existing.teacherId !== user.id && user.role !== "ADMIN") {
+        return res.status(403).json({ message: "You can only delete your own entries" });
+      }
+      
+      await storage.deleteLearningSupport(id);
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Delete learning support error:", err);
+      res.status(500).json({ message: "Failed to delete learning support" });
+    }
+  });
+
+  // Submit for approval
+  app.post("/api/learning-support/:id/submit", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getLearningSupportById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning support not found" });
+      }
+      
+      const support = await storage.updateLearningSupport(id, { status: "PENDING_APPROVAL" });
+      res.json(support);
+    } catch (err) {
+      console.error("Submit learning support error:", err);
+      res.status(500).json({ message: "Failed to submit for approval" });
+    }
+  });
+
+  // Approve learning support (Admin/VP only)
+  app.post("/api/learning-support/:id/approve", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const user = req.user as any;
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      return res.status(403).json({ message: "Only Admin or Vice Principal can approve" });
+    }
+    
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getLearningSupportById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning support not found" });
+      }
+      
+      const support = await storage.updateLearningSupport(id, { 
+        status: "APPROVED",
+        approvedById: user.id,
+        approvalComments: req.body.comments || null
+      });
+      res.json(support);
+    } catch (err) {
+      console.error("Approve learning support error:", err);
+      res.status(500).json({ message: "Failed to approve" });
+    }
+  });
+
+  // Reject learning support (Admin/VP only)
+  app.post("/api/learning-support/:id/reject", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const user = req.user as any;
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      return res.status(403).json({ message: "Only Admin or Vice Principal can reject" });
+    }
+    
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getLearningSupportById(id);
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Learning support not found" });
+      }
+      
+      const support = await storage.updateLearningSupport(id, { 
+        status: "REJECTED",
+        approvedById: user.id,
+        approvalComments: req.body.comments || null
+      });
+      res.json(support);
+    } catch (err) {
+      console.error("Reject learning support error:", err);
+      res.status(500).json({ message: "Failed to reject" });
+    }
+  });
+
+  // === ACADEMIC PLANNING PDF EXPORTS ===
+  app.get("/api/academic-planning/pdf/summaries", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const term = req.query.term as string;
+      const weekNumber = req.query.weekNumber ? Number(req.query.weekNumber) : undefined;
+      
+      const summaries = await storage.getLearningSummaries({ 
+        term, 
+        weekNumber 
+      });
+      
+      // Only approved entries
+      const approvedSummaries = summaries.filter(s => s.status === "APPROVED");
+      
+      const doc = new PDFDocument({ 
+        layout: 'landscape',
+        size: 'A4',
+        margin: 40
+      });
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=learning-summaries-${term}-week${weekNumber}.pdf`);
+      doc.pipe(res);
+      
+      // Header
+      doc.fontSize(18).font('Helvetica-Bold').text('Learning Summaries', { align: 'center' });
+      doc.fontSize(12).font('Helvetica').text(`${term?.replace('_', ' ')} - Week ${weekNumber}`, { align: 'center' });
+      doc.moveDown();
+      
+      if (approvedSummaries.length === 0) {
+        doc.text('No approved entries for this period.', { align: 'center' });
+      } else {
+        // Table headers
+        const headers = ['Grade', 'Class', 'Subject', 'Code', 'Teacher', 'Topics', 'Quiz Day', 'Quiz Date', 'Quiz Time'];
+        const colWidths = [40, 60, 70, 50, 80, 150, 50, 70, 50];
+        let y = doc.y;
+        let x = 40;
+        
+        doc.font('Helvetica-Bold').fontSize(8);
+        headers.forEach((header, i) => {
+          doc.text(header, x, y, { width: colWidths[i], align: 'left' });
+          x += colWidths[i] + 5;
+        });
+        
+        y += 15;
+        doc.moveTo(40, y).lineTo(760, y).stroke();
+        y += 5;
+        
+        // Table rows
+        doc.font('Helvetica').fontSize(7);
+        let alternate = false;
+        
+        for (const s of approvedSummaries) {
+          if (y > 500) {
+            doc.addPage();
+            y = 40;
+          }
+          
+          if (alternate) {
+            doc.rect(40, y - 2, 720, 12).fill('#f5f5f5').stroke();
+            doc.fillColor('black');
+          }
+          alternate = !alternate;
+          
+          x = 40;
+          const row = [
+            s.grade,
+            s.class.name,
+            s.subject.name,
+            s.subject.code,
+            s.teacher.name,
+            s.upcomingTopics || '-',
+            s.quizDay || '-',
+            s.quizDate ? format(new Date(s.quizDate), 'MMM dd') : '-',
+            s.quizTime || '-'
+          ];
+          
+          row.forEach((cell, i) => {
+            doc.text(String(cell).substring(0, 25), x, y, { width: colWidths[i], align: 'left' });
+            x += colWidths[i] + 5;
+          });
+          y += 12;
+        }
+      }
+      
+      // Footer
+      doc.fontSize(8).text(`Generated on ${format(new Date(), 'MMM dd, yyyy HH:mm')}`, 40, 550, { align: 'left' });
+      
+      doc.end();
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      res.status(500).json({ message: "Failed to generate PDF" });
+    }
+  });
+
+  app.get("/api/academic-planning/pdf/support", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const term = req.query.term as string;
+      const weekNumber = req.query.weekNumber ? Number(req.query.weekNumber) : undefined;
+      
+      const support = await storage.getLearningSupport({ 
+        term, 
+        weekNumber 
+      });
+      
+      // Only approved entries
+      const approvedSupport = support.filter(s => s.status === "APPROVED");
+      
+      const doc = new PDFDocument({ 
+        layout: 'landscape',
+        size: 'A4',
+        margin: 40
+      });
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=learning-support-${term}-week${weekNumber}.pdf`);
+      doc.pipe(res);
+      
+      // Header
+      doc.fontSize(18).font('Helvetica-Bold').text('Learning Support (SAPET Program)', { align: 'center' });
+      doc.fontSize(12).font('Helvetica').text(`${term?.replace('_', ' ')} - Week ${weekNumber}`, { align: 'center' });
+      doc.moveDown();
+      
+      if (approvedSupport.length === 0) {
+        doc.text('No approved entries for this period.', { align: 'center' });
+      } else {
+        // Table headers
+        const headers = ['Grade', 'Code', 'Class', 'Teacher', 'Teams Link', 'SAPET Day', 'SAPET Date', 'SAPET Time'];
+        const colWidths = [40, 50, 60, 80, 180, 60, 70, 60];
+        let y = doc.y;
+        let x = 40;
+        
+        doc.font('Helvetica-Bold').fontSize(8);
+        headers.forEach((header, i) => {
+          doc.text(header, x, y, { width: colWidths[i], align: 'left' });
+          x += colWidths[i] + 5;
+        });
+        
+        y += 15;
+        doc.moveTo(40, y).lineTo(760, y).stroke();
+        y += 5;
+        
+        // Table rows
+        doc.font('Helvetica').fontSize(7);
+        let alternate = false;
+        
+        for (const s of approvedSupport) {
+          if (y > 500) {
+            doc.addPage();
+            y = 40;
+          }
+          
+          if (alternate) {
+            doc.rect(40, y - 2, 720, 12).fill('#f5f5f5').stroke();
+            doc.fillColor('black');
+          }
+          alternate = !alternate;
+          
+          x = 40;
+          const row = [
+            s.grade,
+            s.subject.code,
+            s.class.name,
+            s.teacher.name,
+            s.teamsLink ? s.teamsLink.substring(0, 30) + '...' : '-',
+            s.sapetDay || '-',
+            s.sapetDate ? format(new Date(s.sapetDate), 'MMM dd') : '-',
+            s.sapetTime || '-'
+          ];
+          
+          row.forEach((cell, i) => {
+            doc.text(String(cell), x, y, { width: colWidths[i], align: 'left' });
+            x += colWidths[i] + 5;
+          });
+          y += 12;
+        }
+      }
+      
+      // Footer
+      doc.fontSize(8).text(`Generated on ${format(new Date(), 'MMM dd, yyyy HH:mm')}`, 40, 550, { align: 'left' });
+      
+      doc.end();
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      res.status(500).json({ message: "Failed to generate PDF" });
+    }
+  });
+
   return httpServer;
 }
 
