@@ -151,7 +151,7 @@ export default function AcademicPlanningHub() {
   const [approvalAction, setApprovalAction] = useState<{ type: "summary" | "support"; id: number; action: "approve" | "reject" } | null>(null);
   const [approvalComments, setApprovalComments] = useState("");
 
-  const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL";
+  const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL";
 
   const { data: summaries = [], isLoading: summariesLoading } = useQuery<LearningSummary[]>({
     queryKey: [`/api/learning-summaries?term=${selectedTerm}&weekNumber=${selectedWeek}`],
@@ -430,17 +430,20 @@ export default function AcademicPlanningHub() {
               <TabsTrigger value="summaries" data-testid="tab-summaries">
                 <FileText className="w-4 h-4 mr-2" />
                 Learning Summaries
-                {pendingSummaries > 0 && (
-                  <Badge variant="secondary" className="ml-2">{pendingSummaries}</Badge>
-                )}
               </TabsTrigger>
               <TabsTrigger value="support" data-testid="tab-support">
                 <Users className="w-4 h-4 mr-2" />
                 Learning Support (SAPET)
-                {pendingSupport > 0 && (
-                  <Badge variant="secondary" className="ml-2">{pendingSupport}</Badge>
-                )}
               </TabsTrigger>
+              {canApprove && (
+                <TabsTrigger value="pending" data-testid="tab-pending">
+                  <Check className="w-4 h-4 mr-2" />
+                  Pending Approvals
+                  {(pendingSummaries + pendingSupport) > 0 && (
+                    <Badge variant="destructive" className="ml-2">{pendingSummaries + pendingSupport}</Badge>
+                  )}
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="summaries">
@@ -832,9 +835,9 @@ export default function AcademicPlanningHub() {
                     <div className="flex justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                     </div>
-                  ) : support.length === 0 ? (
+                  ) : support.filter(s => s.status === "APPROVED").length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      No entries for this term and week
+                      No approved sessions for this term and week. Sessions will appear here once approved.
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -845,14 +848,15 @@ export default function AcademicPlanningHub() {
                         ))}
                         
                         {(() => {
+                          const approvedSupport = support.filter(s => s.status === "APPROVED");
                           const supportByDay: Record<string, typeof support> = {};
                           DAYS.forEach(day => { supportByDay[day] = []; });
-                          support.forEach(s => {
+                          approvedSupport.forEach(s => {
                             if (s.sapetDay && supportByDay[s.sapetDay]) {
                               supportByDay[s.sapetDay].push(s);
                             }
                           });
-                          const unscheduled = support.filter(s => !s.sapetDay);
+                          const unscheduled = approvedSupport.filter(s => !s.sapetDay);
                           const maxSessions = Math.max(1, ...DAYS.map(d => supportByDay[d].length));
                           
                           return (
@@ -874,10 +878,7 @@ export default function AcademicPlanningHub() {
                                         data-testid={`cell-support-${session.id}`}
                                       >
                                         <div className="space-y-1.5">
-                                          <div className="flex items-center justify-between">
-                                            <span className="font-medium text-sm">G{session.grade} - {session.class.name}</span>
-                                            {getStatusBadge(session.status)}
-                                          </div>
+                                          <div className="font-medium text-sm">G{session.grade} - {session.class.name}</div>
                                           <div className="text-xs text-muted-foreground">{session.subject.code} - {session.subject.name}</div>
                                           <div className="text-xs">
                                             <Badge variant="outline" className="text-xs">
@@ -901,33 +902,6 @@ export default function AcademicPlanningHub() {
                                               Teams Link
                                             </a>
                                           )}
-                                          <div className="flex items-center gap-1 pt-1">
-                                            {session.status === "DRAFT" && session.teacherId === user?.id && (
-                                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => submitSupportMutation.mutate(session.id)} title="Submit">
-                                                <Send className="w-3 h-3" />
-                                              </Button>
-                                            )}
-                                            {canApprove && session.status === "PENDING_APPROVAL" && (
-                                              <>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-green-600" onClick={() => { setApprovalAction({ type: "support", id: session.id, action: "approve" }); setApprovalComments(""); setApprovalDialogOpen(true); }} title="Approve">
-                                                  <Check className="w-3 h-3" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600" onClick={() => { setApprovalAction({ type: "support", id: session.id, action: "reject" }); setApprovalComments(""); setApprovalDialogOpen(true); }} title="Reject">
-                                                  <X className="w-3 h-3" />
-                                                </Button>
-                                              </>
-                                            )}
-                                            {(session.teacherId === user?.id || user?.role === "ADMIN") && session.status !== "APPROVED" && (
-                                              <>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingSupport(session); setSupportDialogOpen(true); }} title="Edit">
-                                                  <Edit className="w-3 h-3" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600" onClick={() => { if (confirm("Delete?")) deleteSupportMutation.mutate(session.id); }} title="Delete">
-                                                  <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                              </>
-                                            )}
-                                          </div>
                                         </div>
                                       </div>
                                     );
@@ -942,33 +916,19 @@ export default function AcademicPlanningHub() {
                                   {unscheduled.map(session => (
                                     <div 
                                       key={session.id} 
-                                      className="col-span-6 p-3 border rounded-md bg-card flex items-center justify-between gap-4"
+                                      className="col-span-6 p-3 border rounded-md bg-card flex items-center gap-4"
                                       data-testid={`cell-unscheduled-${session.id}`}
                                     >
-                                      <div className="flex items-center gap-4">
-                                        <span className="font-medium text-sm">G{session.grade} - {session.class.name}</span>
-                                        <span className="text-xs text-muted-foreground">{session.subject.code}</span>
-                                        <Badge variant="outline" className="text-xs">
-                                          {session.sessionType === "online" ? "Online" : session.sessionType === "in_school" ? "In School" : "TBD"}
-                                        </Badge>
-                                        {getStatusBadge(session.status)}
-                                        {session.teamsLink && (
-                                          <a href={session.teamsLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
-                                            <ExternalLink className="w-3 h-3" /> Teams
-                                          </a>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        {session.status === "DRAFT" && session.teacherId === user?.id && (
-                                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => submitSupportMutation.mutate(session.id)}><Send className="w-3 h-3" /></Button>
-                                        )}
-                                        {(session.teacherId === user?.id || user?.role === "ADMIN") && session.status !== "APPROVED" && (
-                                          <>
-                                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingSupport(session); setSupportDialogOpen(true); }}><Edit className="w-3 h-3" /></Button>
-                                            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600" onClick={() => { if (confirm("Delete?")) deleteSupportMutation.mutate(session.id); }}><Trash2 className="w-3 h-3" /></Button>
-                                          </>
-                                        )}
-                                      </div>
+                                      <span className="font-medium text-sm">G{session.grade} - {session.class.name}</span>
+                                      <span className="text-xs text-muted-foreground">{session.subject.code}</span>
+                                      <Badge variant="outline" className="text-xs">
+                                        {session.sessionType === "online" ? "Online" : session.sessionType === "in_school" ? "In School" : "TBD"}
+                                      </Badge>
+                                      {session.teamsLink && (
+                                        <a href={session.teamsLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
+                                          <ExternalLink className="w-3 h-3" /> Teams
+                                        </a>
+                                      )}
                                     </div>
                                   ))}
                                 </>
@@ -982,6 +942,152 @@ export default function AcademicPlanningHub() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {canApprove && (
+              <TabsContent value="pending">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pending Approvals</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(pendingSummaries + pendingSupport) === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No entries pending approval
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {summaries.filter(s => s.status === "PENDING_APPROVAL").length > 0 && (
+                          <div>
+                            <h3 className="font-semibold mb-3 flex items-center gap-2">
+                              <FileText className="w-4 h-4" />
+                              Learning Summaries ({summaries.filter(s => s.status === "PENDING_APPROVAL").length})
+                            </h3>
+                            <div className="space-y-2">
+                              {summaries.filter(s => s.status === "PENDING_APPROVAL").map(s => (
+                                <div key={s.id} className="p-4 border rounded-lg bg-card flex items-center justify-between gap-4" data-testid={`pending-summary-${s.id}`}>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-1">
+                                      <span className="font-medium">G{s.grade} - {s.class.name}</span>
+                                      <span className="text-sm text-muted-foreground">{s.subject.code} - {s.subject.name}</span>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {s.upcomingTopics ? s.upcomingTopics.substring(0, 100) + (s.upcomingTopics.length > 100 ? "..." : "") : "No topics specified"}
+                                    </div>
+                                    {s.quizDay && (
+                                      <div className="text-sm mt-1">
+                                        Quiz: {s.quizDay} {s.quizTime && `Period ${s.quizTime}`} {s.quizDate && `(${format(new Date(s.quizDate), "MMM d")})`}
+                                      </div>
+                                    )}
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      By: {s.teacher.name} | Term {selectedTerm.replace("TERM_", "")} Week {selectedWeek}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-green-600 border-green-600"
+                                      onClick={() => {
+                                        setApprovalAction({ type: "summary", id: s.id, action: "approve" });
+                                        setApprovalComments("");
+                                        setApprovalDialogOpen(true);
+                                      }}
+                                      data-testid={`button-approve-pending-summary-${s.id}`}
+                                    >
+                                      <Check className="w-4 h-4 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-red-600 border-red-600"
+                                      onClick={() => {
+                                        setApprovalAction({ type: "summary", id: s.id, action: "reject" });
+                                        setApprovalComments("");
+                                        setApprovalDialogOpen(true);
+                                      }}
+                                      data-testid={`button-reject-pending-summary-${s.id}`}
+                                    >
+                                      <X className="w-4 h-4 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {support.filter(s => s.status === "PENDING_APPROVAL").length > 0 && (
+                          <div>
+                            <h3 className="font-semibold mb-3 flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              Learning Support ({support.filter(s => s.status === "PENDING_APPROVAL").length})
+                            </h3>
+                            <div className="space-y-2">
+                              {support.filter(s => s.status === "PENDING_APPROVAL").map(s => (
+                                <div key={s.id} className="p-4 border rounded-lg bg-card flex items-center justify-between gap-4" data-testid={`pending-support-${s.id}`}>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-1">
+                                      <span className="font-medium">G{s.grade} - {s.class.name}</span>
+                                      <span className="text-sm text-muted-foreground">{s.subject.code} - {s.subject.name}</span>
+                                      <Badge variant="outline">
+                                        {s.sessionType === "online" ? "Online" : s.sessionType === "in_school" ? "In School" : "TBD"}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {s.sapetDay && `${s.sapetDay}`} {s.sapetTime && `at ${s.sapetTime}`} {s.sapetDate && `(${format(new Date(s.sapetDate), "MMM d")})`}
+                                    </div>
+                                    {s.teamsLink && (
+                                      <a href={s.teamsLink} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline flex items-center gap-1 mt-1">
+                                        <ExternalLink className="w-3 h-3" /> Teams Link
+                                      </a>
+                                    )}
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      By: {s.teacher.name} | Term {selectedTerm.replace("TERM_", "")} Week {selectedWeek}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-green-600 border-green-600"
+                                      onClick={() => {
+                                        setApprovalAction({ type: "support", id: s.id, action: "approve" });
+                                        setApprovalComments("");
+                                        setApprovalDialogOpen(true);
+                                      }}
+                                      data-testid={`button-approve-pending-support-${s.id}`}
+                                    >
+                                      <Check className="w-4 h-4 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-red-600 border-red-600"
+                                      onClick={() => {
+                                        setApprovalAction({ type: "support", id: s.id, action: "reject" });
+                                        setApprovalComments("");
+                                        setApprovalDialogOpen(true);
+                                      }}
+                                      data-testid={`button-reject-pending-support-${s.id}`}
+                                    >
+                                      <X className="w-4 h-4 mr-1" />
+                                      Reject
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </main>
