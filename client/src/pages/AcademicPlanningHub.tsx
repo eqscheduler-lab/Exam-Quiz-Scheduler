@@ -544,9 +544,145 @@ export default function AcademicPlanningHub() {
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label htmlFor="quizTime">Quiz Time</Label>
-                                <Input 
-                                  type="time"
+                                <Label htmlFor="quizTime">Period</Label>
+                                <Select name="quizTime" defaultValue={editingSummary?.quizTime || ""}>
+                                  <SelectTrigger data-testid="input-quiz-period">
+                                    <SelectValue placeholder="Period" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(p => (
+                                      <SelectItem key={p} value={p.toString()}>Period {p}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit" data-testid="button-save-summary">
+                              {editingSummary ? "Update" : "Create"}
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {summariesLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : summaries.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No learning summaries for this week. Click "Add Entry" to create one.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Grade</TableHead>
+                        <TableHead>Class</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Topics</TableHead>
+                        <TableHead>Quiz</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {summaries.map((s) => {
+                        const cls = classes.find(c => c.id === s.classId);
+                        const subj = subjects.find(sub => sub.id === s.subjectId);
+                        const isOwner = s.teacherId === user?.id;
+                        return (
+                          <TableRow key={s.id} data-testid={`row-summary-${s.id}`}>
+                            <TableCell>Grade {s.grade}</TableCell>
+                            <TableCell>{cls?.name || "-"}</TableCell>
+                            <TableCell>{subj?.code || "-"}</TableCell>
+                            <TableCell className="max-w-[200px] truncate">{s.upcomingTopics || "-"}</TableCell>
+                            <TableCell>
+                              {s.quizDay ? (
+                                <span>{s.quizDay}{s.quizTime ? ` P${s.quizTime}` : ""}</span>
+                              ) : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(s.status)}>{s.status.replace("_", " ")}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                {isOwner && s.status === "DRAFT" && (
+                                  <>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => { setEditingSummary(s); setSummaryDialogOpen(true); }}
+                                      data-testid={`button-edit-summary-${s.id}`}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => submitSummaryMutation.mutate(s.id)}
+                                      data-testid={`button-submit-summary-${s.id}`}
+                                    >
+                                      <Send className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => deleteSummaryMutation.mutate(s.id)}
+                                      data-testid={`button-delete-summary-${s.id}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                                {isOwner && s.status === "APPROVED" && (
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost"
+                                    onClick={() => { setEditingSummary(s); setSummaryDialogOpen(true); }}
+                                    data-testid={`button-edit-approved-summary-${s.id}`}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {canApprove && s.status === "PENDING_APPROVAL" && (
+                                  <>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      className="text-green-600"
+                                      onClick={() => { setApprovalAction({ type: "summaries", id: s.id, action: "approve" }); setApprovalDialogOpen(true); }}
+                                      data-testid={`button-approve-summary-${s.id}`}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      className="text-red-600"
+                                      onClick={() => { setApprovalAction({ type: "summaries", id: s.id, action: "reject" }); setApprovalDialogOpen(true); }}
+                                      data-testid={`button-reject-summary-${s.id}`}
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
                                   name="quizTime"
                                   defaultValue={editingSummary?.quizTime || ""}
                                   data-testid="input-quiz-time"
