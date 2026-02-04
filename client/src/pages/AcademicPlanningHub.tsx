@@ -85,6 +85,7 @@ interface LearningSupport {
   classId: number;
   subjectId: number;
   teacherId: number;
+  sessionType: string | null;
   teamsLink: string | null;
   sapetDay: string | null;
   sapetDate: string | null;
@@ -352,6 +353,7 @@ export default function AcademicPlanningHub() {
       grade: formData.get("grade") as string,
       classId: Number(formData.get("classId")),
       subjectId: Number(formData.get("subjectId")),
+      sessionType: formData.get("sessionType") as string || null,
       teamsLink,
       sapetDay: formData.get("sapetDay") as string || null,
       sapetDate: formData.get("sapetDate") as string || null,
@@ -760,6 +762,18 @@ export default function AcademicPlanningHub() {
                               </Select>
                             </div>
                             <div className="space-y-2">
+                              <Label htmlFor="sessionType">Session Type</Label>
+                              <Select name="sessionType" defaultValue={editingSupport?.sessionType || ""}>
+                                <SelectTrigger data-testid="input-session-type">
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="online">Online</SelectItem>
+                                  <SelectItem value="in_school">In School</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
                               <Label htmlFor="teamsLink">Teams Link</Label>
                               <Input 
                                 type="url"
@@ -829,7 +843,7 @@ export default function AcademicPlanningHub() {
                           <TableHead>Grade</TableHead>
                           <TableHead>Class</TableHead>
                           <TableHead>Subject</TableHead>
-                          <TableHead>Teacher</TableHead>
+                          <TableHead>Type</TableHead>
                           <TableHead>Teams Link</TableHead>
                           <TableHead>SAPET Day</TableHead>
                           <TableHead>SAPET Date</TableHead>
@@ -843,7 +857,9 @@ export default function AcademicPlanningHub() {
                             <TableCell>G{s.grade}</TableCell>
                             <TableCell>{s.class.name}</TableCell>
                             <TableCell>{s.subject.code}</TableCell>
-                            <TableCell>{s.teacher.name}</TableCell>
+                            <TableCell>
+                              {s.sessionType === "online" ? "Online" : s.sessionType === "in_school" ? "In School" : "-"}
+                            </TableCell>
                             <TableCell>
                               {s.teamsLink ? (
                                 <a 
