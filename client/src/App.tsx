@@ -19,6 +19,7 @@ import BulkImport from "@/pages/BulkImport";
 import TeacherOverview from "@/pages/TeacherOverview";
 import InactiveAccounts from "@/pages/InactiveAccounts";
 import Documentation from "@/pages/Documentation";
+import AcademicPlanningHub from "@/pages/AcademicPlanningHub";
 
 function ProtectedRoute({ component: Component, allowedRoles }: { component: React.ComponentType; allowedRoles: string[] }) {
   const { user } = useAuth();
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/schedule" component={SchedulePage} />
       <Route path="/my-exams" component={MyExamsPage} />
+      <Route path="/academic-planning" component={AcademicPlanningHub} />
       <Route path="/admin/users">
         <ProtectedRoute component={ManageStaff} allowedRoles={["ADMIN"]} />
       </Route>

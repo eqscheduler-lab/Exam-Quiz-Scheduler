@@ -13,7 +13,8 @@ import {
   RotateCcw,
   AlertTriangle,
   FileUp,
-  UserX
+  UserX,
+  ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -116,6 +117,16 @@ export function Sidebar() {
             My Exams
           </Link>
         )}
+
+        <Link href="/academic-planning" className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+          isActive("/academic-planning") 
+            ? "bg-primary/10 text-primary shadow-sm" 
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        )} data-testid="link-academic-planning">
+          <ClipboardList className="w-4 h-4" />
+          Academic Planning
+        </Link>
 
         {isLeadership && (
           <>
