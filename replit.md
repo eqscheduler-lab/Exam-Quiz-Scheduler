@@ -60,6 +60,28 @@ Admins can bulk import data using CSV files with downloadable templates:
 - **Subjects Import**: Import subjects with columns: code, name
 - **Classes Import**: Import classes with column: name (format: A[Grade][Program]/Section)
 
+### Academic Planning Hub (`/academic-planning`)
+The Academic Planning Hub allows teachers and administrators to manage learning summaries and learning support schedules. Features include:
+
+**Learning Summaries**
+- Weekly planning entries with upcoming topics and optional quiz scheduling
+- Term and week selectors (3 terms, 15 weeks each)
+- When approved, automatically creates quiz exam events in the scheduler
+- PDF export for weekly reports (approved entries only)
+
+**Learning Support (SAPET Program)**
+- Session scheduling with Teams meeting links (URL validated)
+- SAPET day/date/time fields for session planning
+- PDF export for weekly reports (approved entries only)
+
+**Approval Workflow**
+- Four statuses: DRAFT → PENDING_APPROVAL → APPROVED/REJECTED
+- Teachers create and edit their own entries
+- Editing approved entries reverts status to PENDING_APPROVAL
+- Only Admins and Vice Principals can approve/reject entries
+- Approval comments supported for feedback
+- Rejection removes linked scheduler events
+
 ### Project Structure
 ```
 client/           # React frontend
