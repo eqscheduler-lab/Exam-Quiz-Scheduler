@@ -45,7 +45,10 @@ import {
   Send,
   FileText,
   Users,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 
 type Term = "TERM_1" | "TERM_2" | "TERM_3";
@@ -567,7 +570,6 @@ export default function AcademicPlanningHub() {
                       </DialogContent>
                     </Dialog>
                   </div>
-                </div>
               </CardHeader>
               <CardContent>
                 {summariesLoading ? (
@@ -608,7 +610,7 @@ export default function AcademicPlanningHub() {
                               ) : "-"}
                             </TableCell>
                             <TableCell>
-                              <Badge className={getStatusColor(s.status)}>{s.status.replace("_", " ")}</Badge>
+                              {getStatusBadge(s.status)}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
@@ -656,7 +658,7 @@ export default function AcademicPlanningHub() {
                                       size="icon" 
                                       variant="ghost"
                                       className="text-green-600"
-                                      onClick={() => { setApprovalAction({ type: "summaries", id: s.id, action: "approve" }); setApprovalDialogOpen(true); }}
+                                      onClick={() => { setApprovalAction({ type: "summary", id: s.id, action: "approve" }); setApprovalDialogOpen(true); }}
                                       data-testid={`button-approve-summary-${s.id}`}
                                     >
                                       <CheckCircle className="h-4 w-4" />
@@ -665,7 +667,7 @@ export default function AcademicPlanningHub() {
                                       size="icon" 
                                       variant="ghost"
                                       className="text-red-600"
-                                      onClick={() => { setApprovalAction({ type: "summaries", id: s.id, action: "reject" }); setApprovalDialogOpen(true); }}
+                                      onClick={() => { setApprovalAction({ type: "summary", id: s.id, action: "reject" }); setApprovalDialogOpen(true); }}
                                       data-testid={`button-reject-summary-${s.id}`}
                                     >
                                       <XCircle className="h-4 w-4" />
@@ -683,149 +685,6 @@ export default function AcademicPlanningHub() {
               </CardContent>
             </Card>
           </TabsContent>
-                                  name="quizTime"
-                                  defaultValue={editingSummary?.quizTime || ""}
-                                  data-testid="input-quiz-time"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button type="submit" data-testid="button-save-summary">
-                              {editingSummary ? "Update" : "Create"}
-                            </Button>
-                          </DialogFooter>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {summariesLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                    </div>
-                  ) : summaries.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No entries for this term and week
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Grade</TableHead>
-                          <TableHead>Class</TableHead>
-                          <TableHead>Subject</TableHead>
-                          <TableHead>Teacher</TableHead>
-                          <TableHead>Topics</TableHead>
-                          <TableHead>Quiz Day</TableHead>
-                          <TableHead>Quiz Date</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {summaries.map((s) => (
-                          <TableRow key={s.id} data-testid={`row-summary-${s.id}`}>
-                            <TableCell>G{s.grade}</TableCell>
-                            <TableCell>{s.class.name}</TableCell>
-                            <TableCell>{s.subject.code}</TableCell>
-                            <TableCell>{s.teacher.name}</TableCell>
-                            <TableCell className="max-w-48 truncate" title={s.upcomingTopics || ""}>
-                              {s.upcomingTopics || "-"}
-                            </TableCell>
-                            <TableCell>{s.quizDay || "-"}</TableCell>
-                            <TableCell>
-                              {s.quizDate ? format(new Date(s.quizDate), "MMM d") : "-"}
-                            </TableCell>
-                            <TableCell>{getStatusBadge(s.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {s.status === "DRAFT" && s.teacherId === user?.id && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => submitSummaryMutation.mutate(s.id)}
-                                      title="Submit for approval"
-                                      data-testid={`button-submit-summary-${s.id}`}
-                                    >
-                                      <Send className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
-                                {canApprove && s.status === "PENDING_APPROVAL" && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-green-600"
-                                      onClick={() => {
-                                        setApprovalAction({ type: "summary", id: s.id, action: "approve" });
-                                        setApprovalComments("");
-                                        setApprovalDialogOpen(true);
-                                      }}
-                                      title="Approve"
-                                      data-testid={`button-approve-summary-${s.id}`}
-                                    >
-                                      <Check className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-red-600"
-                                      onClick={() => {
-                                        setApprovalAction({ type: "summary", id: s.id, action: "reject" });
-                                        setApprovalComments("");
-                                        setApprovalDialogOpen(true);
-                                      }}
-                                      title="Reject"
-                                      data-testid={`button-reject-summary-${s.id}`}
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
-                                {(s.teacherId === user?.id || user?.role === "ADMIN") && s.status !== "APPROVED" && (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => {
-                                        setEditingSummary(s);
-                                        setSummaryDialogOpen(true);
-                                      }}
-                                      title="Edit"
-                                      data-testid={`button-edit-summary-${s.id}`}
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-red-600"
-                                      onClick={() => {
-                                        if (confirm("Delete this entry?")) {
-                                          deleteSummaryMutation.mutate(s.id);
-                                        }
-                                      }}
-                                      title="Delete"
-                                      data-testid={`button-delete-summary-${s.id}`}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="support">
               <Card>
