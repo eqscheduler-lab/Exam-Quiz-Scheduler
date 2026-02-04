@@ -10,6 +10,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
 import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes, userRoles } from "../shared/schema";
+import { getSendGridClient } from "./sendgrid";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -1599,19 +1600,11 @@ export async function registerRoutes(
         htmlContent += '</table>';
       }
       
-      const sendgridApiKey = process.env.SENDGRID_API_KEY;
-      if (!sendgridApiKey) {
-        return res.status(503).json({ 
-          message: "Email service not configured. Please set up SendGrid integration to enable email functionality." 
-        });
-      }
-      
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(sendgridApiKey);
+      const { client: sgMail, fromEmail } = await getSendGridClient();
       
       const msg = {
         to: emails,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com',
+        from: fromEmail,
         subject: `Learning Summaries Report - ${term?.replace('_', ' ')} Week ${weekNumber}`,
         html: htmlContent,
       };
@@ -1880,21 +1873,11 @@ export async function registerRoutes(
         htmlContent += '</table>';
       }
       
-      // Check for SENDGRID_API_KEY
-      const sendgridApiKey = process.env.SENDGRID_API_KEY;
-      if (!sendgridApiKey) {
-        return res.status(503).json({ 
-          message: "Email service not configured. Please set up SendGrid integration to enable email functionality." 
-        });
-      }
-      
-      // Send email using SendGrid
-      const sgMail = require('@sendgrid/mail');
-      sgMail.setApiKey(sendgridApiKey);
+      const { client: sgMail, fromEmail } = await getSendGridClient();
       
       const msg = {
         to: emails,
-        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com',
+        from: fromEmail,
         subject: `Learning Support Timetable - ${term?.replace('_', ' ')} Week ${weekNumber}`,
         html: htmlContent,
       };
