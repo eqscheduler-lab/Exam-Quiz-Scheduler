@@ -7,6 +7,8 @@ export const userRoles = ["TEACHER", "ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "CO
 export const classPrograms = ["AET", "AMT", "ENI", "CAI", "ASP"] as const;
 export const examTypes = ["HOMEWORK", "QUIZ"] as const;
 export const examStatuses = ["SCHEDULED", "CANCELLED"] as const;
+export const approvalStatuses = ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED"] as const;
+export const academicTerms = ["TERM_1", "TERM_2", "TERM_3"] as const;
 
 // Bell Schedules Constants
 export const BELL_SCHEDULES = {
@@ -124,6 +126,50 @@ export const loginAudit = pgTable("login_audit", {
   success: boolean("success").default(true).notNull(),
 });
 
+export const learningSummaries = pgTable("learning_summaries", {
+  id: serial("id").primaryKey(),
+  term: text("term", { enum: academicTerms }).notNull(),
+  weekNumber: integer("week_number").notNull(),
+  weekStartDate: timestamp("week_start_date").notNull(),
+  weekEndDate: timestamp("week_end_date").notNull(),
+  grade: text("grade").notNull(),
+  classId: integer("class_id").references(() => classes.id).notNull(),
+  subjectId: integer("subject_id").references(() => subjects.id).notNull(),
+  teacherId: integer("teacher_id").references(() => users.id).notNull(),
+  upcomingTopics: text("upcoming_topics"),
+  quizDay: text("quiz_day"),
+  quizDate: timestamp("quiz_date"),
+  quizTime: text("quiz_time"),
+  status: text("status", { enum: approvalStatuses }).notNull().default("DRAFT"),
+  approvedById: integer("approved_by_id").references(() => users.id),
+  approvalComments: text("approval_comments"),
+  linkedExamId: integer("linked_exam_id").references(() => examEvents.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const learningSupport = pgTable("learning_support", {
+  id: serial("id").primaryKey(),
+  term: text("term", { enum: academicTerms }).notNull(),
+  weekNumber: integer("week_number").notNull(),
+  weekStartDate: timestamp("week_start_date").notNull(),
+  weekEndDate: timestamp("week_end_date").notNull(),
+  grade: text("grade").notNull(),
+  classId: integer("class_id").references(() => classes.id).notNull(),
+  subjectId: integer("subject_id").references(() => subjects.id).notNull(),
+  teacherId: integer("teacher_id").references(() => users.id).notNull(),
+  teamsLink: text("teams_link"),
+  sapetDay: text("sapet_day"),
+  sapetDate: timestamp("sapet_date"),
+  sapetTime: text("sapet_time"),
+  status: text("status", { enum: approvalStatuses }).notNull().default("DRAFT"),
+  approvedById: integer("approved_by_id").references(() => users.id),
+  approvalComments: text("approval_comments"),
+  linkedExamId: integer("linked_exam_id").references(() => examEvents.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertClassSchema = createInsertSchema(classes).omit({ id: true });
@@ -132,6 +178,8 @@ export const insertStudentSchema = createInsertSchema(students).omit({ id: true 
 export const insertExamEventSchema = createInsertSchema(examEvents).omit({ id: true, createdAt: true });
 export const insertSettingsSchema = createInsertSchema(settings).omit({ id: true });
 export const insertLoginAuditSchema = createInsertSchema(loginAudit).omit({ id: true, loginAt: true });
+export const insertLearningSummarySchema = createInsertSchema(learningSummaries).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLearningSupportSchema = createInsertSchema(learningSupport).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -145,3 +193,7 @@ export type InsertExamEvent = z.infer<typeof insertExamEventSchema>;
 export type Settings = typeof settings.$inferSelect;
 export type LoginAudit = typeof loginAudit.$inferSelect;
 export type InsertLoginAudit = z.infer<typeof insertLoginAuditSchema>;
+export type LearningSummary = typeof learningSummaries.$inferSelect;
+export type InsertLearningSummary = z.infer<typeof insertLearningSummarySchema>;
+export type LearningSupport = typeof learningSupport.$inferSelect;
+export type InsertLearningSupport = z.infer<typeof insertLearningSupportSchema>;

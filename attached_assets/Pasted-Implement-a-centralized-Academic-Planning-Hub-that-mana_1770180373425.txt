@@ -1,0 +1,250 @@
+Implement a centralized Academic Planning Hub that manages Learning Summaries and Learning Support (SAPET Program), enforces an Admin or Vice Principal approval workflow, synchronizes approved items with the scheduler, and generates weekly PDF reports.
+
+🧭 Sidebar Navigation
+
+Add a new sidebar item labeled Academic Planning
+
+Match existing sidebar styling and icons
+
+Route to a new hub page (not a modal)
+
+🖥 Academic Planning Hub
+
+Hub landing page with two selectable sections:
+
+Learning Summaries
+
+Learning Support (SAPET Program)
+
+Preserve navigation state when switching sections
+
+🔁 Shared Controls (Both Sections)
+
+Term Selector:
+
+Term 1 / Term 2 / Term 3
+
+Week Selector (week number + date range)
+
+All data must be scoped by:
+
+Term
+
+Week
+
+📘 Learning Summaries
+
+Table Columns (Exact Order):
+
+Grade
+
+Class
+
+Subject(s)
+
+Course Code
+
+Subject Teacher
+
+Upcoming Topics
+
+Upcoming Quizzes – Day
+
+Upcoming Quizzes – Date
+
+Upcoming Quizzes – Time
+
+Spreadsheet-style editable table
+
+Add/remove rows
+
+Group by Grade and Class
+
+📙 Learning Support (SAPET Program)
+
+Table Columns (Exact Order):
+
+Grade
+
+Course Code
+
+Class
+
+Subject Teacher
+
+Class Teams Link
+
+SAPET – Day
+
+SAPET – Date
+
+SAPET – Time
+
+Editable table
+
+Multiple sessions per class
+
+Teams links must be clickable and URL-validated
+
+Visual grouping by Grade
+
+🔐 Approval Workflow (Mandatory)
+
+All quizzes and SAPET sessions must follow this workflow:
+
+Statuses
+
+Draft
+
+Pending Approval
+
+Approved
+
+Rejected
+
+Permissions
+
+Teachers: create/edit drafts, submit for approval
+
+Admin OR Vice Principal: approve/reject, add comments, override conflicts
+
+Editing an Approved entry must revert it to Pending Approval.
+
+🔁 Scheduler & Timetable Sync
+
+ONLY entries with status Approved:
+
+Are auto-created/updated in the Exam & Homework Scheduler
+
+Appear in the Schedule Table / Calendar
+
+Removing approval must immediately remove the item from schedules
+
+⚠️ Conflict Detection
+
+Detect overlaps with:
+
+Exams
+
+Quizzes
+
+SAPET sessions (same class)
+
+Show warnings during approval
+
+Allow Admin/Vice Principal override with confirmation
+
+📄 WEEKLY PDF GENERATION (Two Reports)
+PDF 1: Learning Summaries – Weekly
+
+Title: Learning Summaries – Term X – Week X
+
+Subtitle: Week date range
+
+Table Columns (Exact Order):
+
+Grade
+
+Class
+
+Subject(s)
+
+Course Code
+
+Subject Teacher
+
+Upcoming Topics
+
+Upcoming Quizzes – Day
+
+Upcoming Quizzes – Date
+
+Upcoming Quizzes – Time
+
+PDF 2: Learning Support (SAPET Program) – Weekly
+
+Title: Learning Support (SAPET Program) – Term X – Week X
+
+Subtitle: Week date range
+
+Table Columns (Exact Order):
+
+Grade
+
+Course Code
+
+Class
+
+Subject Teacher
+
+Class Teams Link
+
+SAPET – Day
+
+SAPET – Date
+
+SAPET – Time
+
+🔐 PDF Data Rules
+
+Include ONLY Approved entries
+
+Filter by selected Term and Week
+
+Group by Grade
+
+Sort by Date then Time
+
+🖨 PDF Design
+
+Landscape orientation
+
+School header (name, academic year)
+
+Clear grid borders
+
+Alternating row shading
+
+Page numbers
+
+“Generated on” timestamp
+
+🧭 PDF Export Controls
+
+Add “Export Weekly PDFs” button in Academic Planning Hub
+
+Allow exporting:
+
+Learning Summaries PDF
+
+Learning Support PDF
+
+Or both
+
+🛠 Technical Constraints
+
+Use existing routing, state management, and scheduler logic
+
+Do NOT duplicate scheduler code
+
+Maintain backward compatibility
+
+Academic Planning Hub is a logical aggregation layer only
+
+📦 Output Required
+
+Academic Planning hub page
+
+Sidebar navigation update
+
+Learning Summaries + Learning Support sections
+
+Admin/Vice Principal approval workflow
+
+Scheduler sync gated by approval
+
+Weekly PDF export functionality
+
+Clear inline comments
+
+No regressions
