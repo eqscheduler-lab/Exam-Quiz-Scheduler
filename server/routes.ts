@@ -1548,6 +1548,83 @@ export async function registerRoutes(
     }
   });
 
+  // === EMAIL LEARNING SUMMARIES (Admin only) ===
+  app.post("/api/learning-summaries/email", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const user = req.user as any;
+    if (user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Only administrators can send email reports" });
+    }
+    
+    const { emails, term, weekNumber } = req.body;
+    
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ message: "At least one email address is required" });
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter((e: string) => !emailRegex.test(e));
+    if (invalidEmails.length > 0) {
+      return res.status(400).json({ message: `Invalid email addresses: ${invalidEmails.join(', ')}` });
+    }
+    
+    try {
+      const summaries = await storage.getLearningSummaries({ term, weekNumber });
+      const approvedSummaries = summaries.filter(s => s.status === "APPROVED");
+      
+      let htmlContent = `
+        <h2>Learning Summaries Report</h2>
+        <p><strong>${term?.replace('_', ' ')} - Week ${weekNumber}</strong></p>
+        <p>Generated on: ${new Date().toLocaleDateString()}</p>
+      `;
+      
+      if (approvedSummaries.length === 0) {
+        htmlContent += '<p>No approved entries for this period.</p>';
+      } else {
+        htmlContent += '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+        htmlContent += '<tr style="background-color: #f0f0f0;"><th>Grade</th><th>Class</th><th>Subject</th><th>Teacher</th><th>Topics</th><th>Quiz Day</th><th>Quiz Period</th></tr>';
+        
+        for (const summary of approvedSummaries) {
+          htmlContent += `<tr>
+            <td>G${summary.grade}</td>
+            <td>${summary.class?.name || 'Unknown'}</td>
+            <td>${summary.subject?.code || ''} - ${summary.subject?.name || ''}</td>
+            <td>${summary.teacher?.name || 'Unknown'}</td>
+            <td>${summary.upcomingTopics || '-'}</td>
+            <td>${summary.quizDay || '-'}</td>
+            <td>${summary.quizTime ? `Period ${summary.quizTime}` : '-'}</td>
+          </tr>`;
+        }
+        htmlContent += '</table>';
+      }
+      
+      const sendgridApiKey = process.env.SENDGRID_API_KEY;
+      if (!sendgridApiKey) {
+        return res.status(503).json({ 
+          message: "Email service not configured. Please set up SendGrid integration to enable email functionality." 
+        });
+      }
+      
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(sendgridApiKey);
+      
+      const msg = {
+        to: emails,
+        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com',
+        subject: `Learning Summaries Report - ${term?.replace('_', ' ')} Week ${weekNumber}`,
+        html: htmlContent,
+      };
+      
+      await sgMail.send(msg);
+      
+      res.json({ message: `Report sent to ${emails.length} email(s)` });
+    } catch (err: any) {
+      console.error("Email summaries error:", err);
+      res.status(500).json({ message: err.message || "Failed to send email" });
+    }
+  });
+
   // === LEARNING SUPPORT (SAPET) ===
   app.get("/api/learning-support", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

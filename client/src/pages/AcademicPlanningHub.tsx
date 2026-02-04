@@ -154,6 +154,7 @@ export default function AcademicPlanningHub() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddresses, setEmailAddresses] = useState("");
   const [emailSending, setEmailSending] = useState(false);
+  const [emailType, setEmailType] = useState<"summaries" | "support">("support");
 
   const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL";
   const isAdmin = user?.role === "ADMIN";
@@ -391,12 +392,15 @@ export default function AcademicPlanningHub() {
     
     setEmailSending(true);
     try {
-      await apiRequest("POST", "/api/learning-support/email-timetable", {
+      const endpoint = emailType === "summaries" 
+        ? "/api/learning-summaries/email" 
+        : "/api/learning-support/email-timetable";
+      await apiRequest("POST", endpoint, {
         emails,
         term: selectedTerm,
         weekNumber: selectedWeek
       });
-      toast({ title: "Success", description: `Timetable sent to ${emails.length} email(s)` });
+      toast({ title: "Success", description: `${emailType === "summaries" ? "Summaries" : "Timetable"} sent to ${emails.length} email(s)` });
       setEmailDialogOpen(false);
       setEmailAddresses("");
     } catch (error: any) {
@@ -404,6 +408,11 @@ export default function AcademicPlanningHub() {
     } finally {
       setEmailSending(false);
     }
+  };
+
+  const openEmailDialog = (type: "summaries" | "support") => {
+    setEmailType(type);
+    setEmailDialogOpen(true);
   };
 
   const pendingSummaries = summaries.filter(s => s.status === "PENDING_APPROVAL").length;
@@ -485,6 +494,17 @@ export default function AcademicPlanningHub() {
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
                   <CardTitle>Learning Summaries</CardTitle>
                   <div className="flex gap-2">
+                    {isAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEmailDialog("summaries")}
+                        data-testid="button-email-summaries"
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Email Report
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -734,7 +754,7 @@ export default function AcademicPlanningHub() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEmailDialogOpen(true)}
+                        onClick={() => openEmailDialog("support")}
                         data-testid="button-email-timetable"
                       >
                         <Mail className="w-4 h-4 mr-2" />
@@ -1173,11 +1193,13 @@ export default function AcademicPlanningHub() {
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Email Timetable</DialogTitle>
+            <DialogTitle>
+              Email {emailType === "summaries" ? "Learning Summaries" : "Learning Support Timetable"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Send the Learning Support timetable for Term {selectedTerm.replace("TERM_", "")} Week {selectedWeek} to the specified email addresses.
+              Send the {emailType === "summaries" ? "Learning Summaries report" : "Learning Support timetable"} for Term {selectedTerm.replace("TERM_", "")} Week {selectedWeek} to the specified email addresses.
             </p>
             <div className="space-y-2">
               <Label htmlFor="emails">Email Addresses</Label>
