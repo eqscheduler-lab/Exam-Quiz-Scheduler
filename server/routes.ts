@@ -1735,6 +1735,102 @@ export async function registerRoutes(
     }
   });
 
+  // === EMAIL TIMETABLE (Admin only) ===
+  app.post("/api/learning-support/email-timetable", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const user = req.user as any;
+    if (user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Only administrators can send timetable emails" });
+    }
+    
+    const { emails, term, weekNumber } = req.body;
+    
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ message: "At least one email address is required" });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter((e: string) => !emailRegex.test(e));
+    if (invalidEmails.length > 0) {
+      return res.status(400).json({ message: `Invalid email addresses: ${invalidEmails.join(', ')}` });
+    }
+    
+    try {
+      // Get approved learning support entries
+      const support = await storage.getLearningSupport({ term, weekNumber });
+      const approvedSupport = support.filter(s => s.status === "APPROVED");
+      
+      // Build email content
+      const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      const supportByDay: Record<string, typeof support> = {};
+      DAYS.forEach(day => { supportByDay[day] = []; });
+      approvedSupport.forEach(s => {
+        if (s.sapetDay && supportByDay[s.sapetDay]) {
+          supportByDay[s.sapetDay].push(s);
+        }
+      });
+      
+      let htmlContent = `
+        <h2>Learning Support (SAPET) Timetable</h2>
+        <p><strong>${term?.replace('_', ' ')} - Week ${weekNumber}</strong></p>
+        <p>Generated on: ${new Date().toLocaleDateString()}</p>
+      `;
+      
+      if (approvedSupport.length === 0) {
+        htmlContent += '<p>No approved sessions for this period.</p>';
+      } else {
+        htmlContent += '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">';
+        htmlContent += '<tr style="background-color: #f0f0f0;"><th>Day</th><th>Time</th><th>Class</th><th>Subject</th><th>Type</th><th>Teacher</th><th>Teams Link</th></tr>';
+        
+        for (const day of DAYS) {
+          const sessions = supportByDay[day];
+          if (sessions.length > 0) {
+            for (const session of sessions) {
+              htmlContent += `<tr>
+                <td>${day}</td>
+                <td>${session.sapetTime || 'TBD'}</td>
+                <td>G${session.grade} - ${session.class?.name || 'Unknown'}</td>
+                <td>${session.subject?.code || ''} - ${session.subject?.name || ''}</td>
+                <td>${session.sessionType === 'online' ? 'Online' : session.sessionType === 'in_school' ? 'In School' : 'TBD'}</td>
+                <td>${session.teacher?.name || 'Unknown'}</td>
+                <td>${session.teamsLink ? `<a href="${session.teamsLink}">Join</a>` : '-'}</td>
+              </tr>`;
+            }
+          }
+        }
+        htmlContent += '</table>';
+      }
+      
+      // Check for SENDGRID_API_KEY
+      const sendgridApiKey = process.env.SENDGRID_API_KEY;
+      if (!sendgridApiKey) {
+        return res.status(503).json({ 
+          message: "Email service not configured. Please set up SendGrid integration to enable email functionality." 
+        });
+      }
+      
+      // Send email using SendGrid
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(sendgridApiKey);
+      
+      const msg = {
+        to: emails,
+        from: process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com',
+        subject: `Learning Support Timetable - ${term?.replace('_', ' ')} Week ${weekNumber}`,
+        html: htmlContent,
+      };
+      
+      await sgMail.send(msg);
+      
+      res.json({ message: `Timetable sent to ${emails.length} email(s)` });
+    } catch (err: any) {
+      console.error("Email timetable error:", err);
+      res.status(500).json({ message: err.message || "Failed to send email" });
+    }
+  });
+
   // === ACADEMIC PLANNING PDF EXPORTS ===
   app.get("/api/academic-planning/pdf/summaries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

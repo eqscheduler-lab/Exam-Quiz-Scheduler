@@ -48,6 +48,7 @@ import {
   ExternalLink,
   Loader2,
   CheckCircle,
+  Mail,
   XCircle
 } from "lucide-react";
 
@@ -150,8 +151,12 @@ export default function AcademicPlanningHub() {
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [approvalAction, setApprovalAction] = useState<{ type: "summary" | "support"; id: number; action: "approve" | "reject" } | null>(null);
   const [approvalComments, setApprovalComments] = useState("");
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailAddresses, setEmailAddresses] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
 
   const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL";
+  const isAdmin = user?.role === "ADMIN";
 
   const { data: summaries = [], isLoading: summariesLoading } = useQuery<LearningSummary[]>({
     queryKey: [`/api/learning-summaries?term=${selectedTerm}&weekNumber=${selectedWeek}`],
@@ -370,6 +375,35 @@ export default function AcademicPlanningHub() {
   const exportPdf = (type: "summaries" | "support") => {
     const url = `/api/academic-planning/pdf/${type}?term=${selectedTerm}&weekNumber=${selectedWeek}`;
     window.open(url, '_blank');
+  };
+
+  const sendTimetableEmail = async () => {
+    if (!emailAddresses.trim()) {
+      toast({ title: "Error", description: "Please enter at least one email address", variant: "destructive" });
+      return;
+    }
+    
+    const emails = emailAddresses.split(/[,;\n]/).map(e => e.trim()).filter(e => e);
+    if (emails.length === 0) {
+      toast({ title: "Error", description: "Please enter valid email addresses", variant: "destructive" });
+      return;
+    }
+    
+    setEmailSending(true);
+    try {
+      await apiRequest("POST", "/api/learning-support/email-timetable", {
+        emails,
+        term: selectedTerm,
+        weekNumber: selectedWeek
+      });
+      toast({ title: "Success", description: `Timetable sent to ${emails.length} email(s)` });
+      setEmailDialogOpen(false);
+      setEmailAddresses("");
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to send email", variant: "destructive" });
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const pendingSummaries = summaries.filter(s => s.status === "PENDING_APPROVAL").length;
@@ -696,6 +730,17 @@ export default function AcademicPlanningHub() {
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
                   <CardTitle>Learning Support (SAPET Program)</CardTitle>
                   <div className="flex gap-2">
+                    {isAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEmailDialogOpen(true)}
+                        data-testid="button-email-timetable"
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Email Timetable
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -1120,6 +1165,55 @@ export default function AcademicPlanningHub() {
               data-testid="button-confirm-approval"
             >
               {approvalAction?.action === "approve" ? "Approve" : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email Timetable</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Send the Learning Support timetable for Term {selectedTerm.replace("TERM_", "")} Week {selectedWeek} to the specified email addresses.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="emails">Email Addresses</Label>
+              <Textarea
+                id="emails"
+                value={emailAddresses}
+                onChange={(e) => setEmailAddresses(e.target.value)}
+                placeholder="Enter email addresses (separated by commas or new lines)"
+                rows={4}
+                data-testid="input-email-addresses"
+              />
+              <p className="text-xs text-muted-foreground">
+                Separate multiple emails with commas, semicolons, or new lines.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={sendTimetableEmail}
+              disabled={emailSending}
+              data-testid="button-send-email"
+            >
+              {emailSending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Email
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
