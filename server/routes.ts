@@ -1662,11 +1662,15 @@ export async function registerRoutes(
         }
       }
       
-      const support = await storage.createLearningSupport({
+      // Convert sapetDate string to Date object if provided
+      const supportData = {
         ...req.body,
         teacherId: user.id,
-        status: "DRAFT"
-      });
+        status: "DRAFT",
+        sapetDate: req.body.sapetDate ? new Date(req.body.sapetDate) : null
+      };
+      
+      const support = await storage.createLearningSupport(supportData);
       res.status(201).json(support);
     } catch (err) {
       console.error("Create learning support error:", err);
@@ -1705,6 +1709,11 @@ export async function registerRoutes(
       let updateData = { ...req.body };
       if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
         updateData.status = "PENDING_APPROVAL";
+      }
+      
+      // Convert sapetDate string to Date object if provided
+      if (updateData.sapetDate !== undefined) {
+        updateData.sapetDate = updateData.sapetDate ? new Date(updateData.sapetDate) : null;
       }
       
       const support = await storage.updateLearningSupport(id, updateData);
