@@ -1677,7 +1677,8 @@ export default function AcademicPlanningHub() {
                         <TableHead className="w-[60px]">#</TableHead>
                         <TableHead>Student ID</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead className="text-center w-[120px]">Status</TableHead>
+                        <TableHead className="text-center w-[100px]">Present</TableHead>
+                        <TableHead className="text-center w-[100px]">Absent</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1687,24 +1688,39 @@ export default function AcademicPlanningHub() {
                           <TableCell>{student.studentId}</TableCell>
                           <TableCell>{student.name}</TableCell>
                           <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center justify-center">
                               <Checkbox
-                                id={`attendance-${student.id}`}
+                                id={`attendance-present-${student.id}`}
                                 checked={attendanceData[student.id] === "PRESENT"}
                                 onCheckedChange={(checked) => {
-                                  setAttendanceData(prev => ({
-                                    ...prev,
-                                    [student.id]: checked ? "PRESENT" : "ABSENT"
-                                  }));
+                                  if (checked) {
+                                    setAttendanceData(prev => ({
+                                      ...prev,
+                                      [student.id]: "PRESENT"
+                                    }));
+                                  }
                                 }}
-                                data-testid={`checkbox-attendance-${student.id}`}
+                                data-testid={`checkbox-present-${student.id}`}
+                                className="border-green-500 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
                               />
-                              <Label 
-                                htmlFor={`attendance-${student.id}`}
-                                className={attendanceData[student.id] === "PRESENT" ? "text-green-600" : "text-muted-foreground"}
-                              >
-                                {attendanceData[student.id] === "PRESENT" ? "Present" : "Absent"}
-                              </Label>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center">
+                              <Checkbox
+                                id={`attendance-absent-${student.id}`}
+                                checked={attendanceData[student.id] === "ABSENT"}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setAttendanceData(prev => ({
+                                      ...prev,
+                                      [student.id]: "ABSENT"
+                                    }));
+                                  }
+                                }}
+                                data-testid={`checkbox-absent-${student.id}`}
+                                className="border-red-500 data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
