@@ -32,7 +32,7 @@ export default function BulkImport() {
     
     switch (type) {
       case "staff":
-        csvContent = "name,username,email,role\nJohn Doe,johndoe,john.doe@school.edu,TEACHER\nJane Smith,janesmith,jane.smith@school.edu,COORDINATOR\nMike Admin,mikeadmin,mike.admin@school.edu,ADMIN";
+        csvContent = "name,username,email,role,department\nJohn Doe,johndoe,john.doe@school.edu,TEACHER,SCIENCE\nJane Smith,janesmith,jane.smith@school.edu,COORDINATOR,MATHEMATICS\nMike Admin,mikeadmin,mike.admin@school.edu,ADMIN,";
         filename = "staff_template.csv";
         break;
       case "subjects":
@@ -212,8 +212,9 @@ export default function BulkImport() {
                   Import Staff Members
                 </CardTitle>
                 <CardDescription>
-                  Import teachers, coordinators, and administrators. Required fields: name, username, email, role.
+                  Import teachers, coordinators, and administrators. Required fields: name, username, email, role. Optional: department.
                   Valid roles: TEACHER, ADMIN, COORDINATOR, PRINCIPAL, VICE_PRINCIPAL, LEAD_TEACHER.
+                  Valid departments: SCIENCE, MATHEMATICS, ENGLISH, ARABIC, SOCIAL_STUDIES, PHYSICAL_EDUCATION, ARTS, TECHNOLOGY, ISLAMIC_STUDIES, FRENCH.
                   Default password will be "Staff123" for all imported users.
                 </CardDescription>
               </CardHeader>

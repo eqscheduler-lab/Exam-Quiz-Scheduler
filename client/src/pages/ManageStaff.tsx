@@ -48,6 +48,11 @@ export default function ManageStaff() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [editDepartment, setEditDepartment] = useState<string | null>(null);
+  const [editIsActive, setEditIsActive] = useState(true);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState("");
 
@@ -356,7 +361,14 @@ export default function ManageStaff() {
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-muted-foreground"
-                        onClick={() => setEditingUser(member)}
+                        onClick={() => {
+                          setEditingUser(member);
+                          setEditName(member.name);
+                          setEditEmail(member.email);
+                          setEditRole(member.role);
+                          setEditDepartment(member.department);
+                          setEditIsActive(member.isActive);
+                        }}
                         data-testid={`button-edit-user-${member.id}`}
                         title="Edit user"
                       >
@@ -398,30 +410,27 @@ export default function ManageStaff() {
               <DialogTitle>Edit Staff Member</DialogTitle>
             </DialogHeader>
             {editingUser && (
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const dept = formData.get("department") as string;
-                editMutation.mutate({
-                  id: editingUser.id,
-                  name: formData.get("name") as string,
-                  email: formData.get("email") as string,
-                  role: formData.get("role") as string,
-                  isActive: formData.get("isActive") === "true",
-                  department: dept === "" ? null : dept,
-                });
-              }} className="space-y-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Full Name</label>
-                  <Input name="name" defaultValue={editingUser.name} required />
+                  <Input 
+                    value={editName} 
+                    onChange={(e) => setEditName(e.target.value)} 
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email Address</label>
-                  <Input name="email" type="email" defaultValue={editingUser.email} required />
+                  <Input 
+                    type="email" 
+                    value={editEmail} 
+                    onChange={(e) => setEditEmail(e.target.value)} 
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Role</label>
-                  <Select name="role" defaultValue={editingUser.role}>
+                  <Select value={editRole} onValueChange={setEditRole}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -434,7 +443,7 @@ export default function ManageStaff() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Department</label>
-                  <Select name="department" defaultValue={editingUser.department || ""}>
+                  <Select value={editDepartment || ""} onValueChange={(val) => setEditDepartment(val === "" ? null : val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
@@ -448,7 +457,7 @@ export default function ManageStaff() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Status</label>
-                  <Select name="isActive" defaultValue={editingUser.isActive ? "true" : "false"}>
+                  <Select value={editIsActive ? "true" : "false"} onValueChange={(val) => setEditIsActive(val === "true")}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -460,12 +469,24 @@ export default function ManageStaff() {
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
-                  <Button type="submit" disabled={editMutation.isPending}>
+                  <Button 
+                    onClick={() => {
+                      editMutation.mutate({
+                        id: editingUser.id,
+                        name: editName,
+                        email: editEmail,
+                        role: editRole,
+                        isActive: editIsActive,
+                        department: editDepartment,
+                      });
+                    }}
+                    disabled={editMutation.isPending}
+                  >
                     {editMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Changes
                   </Button>
                 </DialogFooter>
-              </form>
+              </div>
             )}
           </DialogContent>
         </Dialog>

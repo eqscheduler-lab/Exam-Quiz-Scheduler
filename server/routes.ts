@@ -452,9 +452,11 @@ export async function registerRoutes(
       const errors: string[] = [];
       const defaultPassword = await bcrypt.hash("Staff123", 10);
       
+      const validDepartments = ["SCIENCE", "MATHEMATICS", "ENGLISH", "ARABIC", "SOCIAL_STUDIES", "PHYSICAL_EDUCATION", "ARTS", "TECHNOLOGY", "ISLAMIC_STUDIES", "FRENCH"];
+      
       for (const row of rows) {
         try {
-          const { name, username, email, role } = row;
+          const { name, username, email, role, department } = row;
           
           if (!name || !username || !email || !role) {
             errors.push(`Row missing required fields: ${JSON.stringify(row)}`);
@@ -469,6 +471,18 @@ export async function registerRoutes(
             continue;
           }
           
+          // Handle department (optional field)
+          let normalizedDepartment: string | null = null;
+          if (department && department.trim() !== "") {
+            const deptUpper = department.toUpperCase().trim();
+            if (!validDepartments.includes(deptUpper)) {
+              errors.push(`Invalid department "${department}" for user ${username}. Valid departments: ${validDepartments.join(", ")}`);
+              failed++;
+              continue;
+            }
+            normalizedDepartment = deptUpper;
+          }
+          
           await storage.createUser({
             name,
             username: username.toLowerCase(),
@@ -476,6 +490,7 @@ export async function registerRoutes(
             role: normalizedRole as typeof userRoles[number],
             password: defaultPassword,
             isActive: true,
+            department: normalizedDepartment,
           });
           success++;
         } catch (error: any) {
@@ -2047,7 +2062,8 @@ export async function registerRoutes(
       // Lead Teachers can only approve entries from their department
       if (user.role === "LEAD_TEACHER") {
         const teacher = await storage.getUser(existing.teacherId);
-        if (!teacher || teacher.department !== user.department) {
+        // Deny if either party has no department set, or departments don't match
+        if (!teacher || !user.department || !teacher.department || teacher.department !== user.department) {
           return res.status(403).json({ message: "Lead Teachers can only approve entries from their own department" });
         }
       }
@@ -2109,7 +2125,8 @@ export async function registerRoutes(
       // Lead Teachers can only reject entries from their department
       if (user.role === "LEAD_TEACHER") {
         const teacher = await storage.getUser(existing.teacherId);
-        if (!teacher || teacher.department !== user.department) {
+        // Deny if either party has no department set, or departments don't match
+        if (!teacher || !user.department || !teacher.department || teacher.department !== user.department) {
           return res.status(403).json({ message: "Lead Teachers can only reject entries from their own department" });
         }
       }
@@ -2448,7 +2465,8 @@ export async function registerRoutes(
       // Lead Teachers can only approve entries from their department
       if (user.role === "LEAD_TEACHER") {
         const teacher = await storage.getUser(existing.teacherId);
-        if (!teacher || teacher.department !== user.department) {
+        // Deny if either party has no department set, or departments don't match
+        if (!teacher || !user.department || !teacher.department || teacher.department !== user.department) {
           return res.status(403).json({ message: "Lead Teachers can only approve entries from their own department" });
         }
       }
@@ -2485,7 +2503,8 @@ export async function registerRoutes(
       // Lead Teachers can only reject entries from their department
       if (user.role === "LEAD_TEACHER") {
         const teacher = await storage.getUser(existing.teacherId);
-        if (!teacher || teacher.department !== user.department) {
+        // Deny if either party has no department set, or departments don't match
+        if (!teacher || !user.department || !teacher.department || teacher.department !== user.department) {
           return res.status(403).json({ message: "Lead Teachers can only reject entries from their own department" });
         }
       }
