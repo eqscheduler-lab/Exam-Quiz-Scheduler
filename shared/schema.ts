@@ -4,7 +4,9 @@ import { z } from "zod";
 
 // Enums
 export const userRoles = ["TEACHER", "ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR", "LEAD_TEACHER"] as const;
-export const departments = ["SCIENCE", "MATHEMATICS", "ENGLISH", "ARABIC", "SOCIAL_STUDIES", "PHYSICAL_EDUCATION", "ARTS", "TECHNOLOGY", "ISLAMIC_STUDIES", "FRENCH"] as const;
+export const defaultDepartments = ["SCIENCE", "MATHEMATICS", "ENGLISH", "ARABIC", "SOCIAL_STUDIES", "PHYSICAL_EDUCATION", "ARTS", "TECHNOLOGY", "ISLAMIC_STUDIES", "FRENCH"] as const;
+// Keep 'departments' for backward compatibility - will be deprecated in favor of database table
+export const departments = defaultDepartments;
 export const classPrograms = ["AET", "AMT", "ENI", "CAI", "ASP"] as const;
 export const examTypes = ["HOMEWORK", "QUIZ"] as const;
 export const examStatuses = ["SCHEDULED", "CANCELLED"] as const;
@@ -78,6 +80,15 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastAccessedAt: timestamp("last_accessed_at"),
+});
+
+// Departments table for dynamic department management
+export const departmentsTable = pgTable("departments", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const classes = pgTable("classes", {
@@ -190,6 +201,11 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Class = typeof classes.$inferSelect;
 export type InsertClass = z.infer<typeof insertClassSchema>;
+
+// Department types
+export const insertDepartmentSchema = createInsertSchema(departmentsTable).omit({ id: true, createdAt: true });
+export type Department = typeof departmentsTable.$inferSelect;
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
 export type Subject = typeof subjects.$inferSelect;
 export type Student = typeof students.$inferSelect;
 export type ExamEvent = typeof examEvents.$inferSelect;
