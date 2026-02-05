@@ -2123,13 +2123,16 @@ export async function registerRoutes(
       // Create quiz event in scheduler if quiz is scheduled
       if (summary.quizDay && summary.quizDate && summary.quizTime) {
         try {
-          await storage.createExamEvent({
+          const allSubjects = await storage.getAllSubjects();
+          const subjectForTitle = allSubjects.find(s => s.id === summary.subjectId);
+          await storage.createExam({
             date: new Date(summary.quizDate),
             period: parseInt(summary.quizTime),
             type: "QUIZ",
-            teacherId: summary.teacherId,
+            title: `${subjectForTitle?.code || 'Quiz'} - Learning Summary Week ${summary.weekNumber}`,
             subjectId: summary.subjectId,
             classId: summary.classId,
+            createdByUserId: summary.teacherId,
             status: "SCHEDULED",
             notes: `Quiz from Learning Summary (Week ${summary.weekNumber})`
           });
@@ -2141,8 +2144,10 @@ export async function registerRoutes(
       // Send notification email to teacher
       try {
         const teacher = await storage.getUser(summary.teacherId);
-        const classData = await storage.getClass(summary.classId);
-        const subjectData = await storage.getSubject(summary.subjectId);
+        const allClasses = await storage.getAllClasses();
+        const allSubjects = await storage.getAllSubjects();
+        const classData = allClasses.find(c => c.id === summary.classId);
+        const subjectData = allSubjects.find(s => s.id === summary.subjectId);
         
         if (teacher && classData && subjectData) {
           await sendBookingNotification({
@@ -2576,8 +2581,10 @@ export async function registerRoutes(
       // Send notification email to teacher
       try {
         const teacher = await storage.getUser(support.teacherId);
-        const classData = await storage.getClass(support.classId);
-        const subjectData = await storage.getSubject(support.subjectId);
+        const allClasses = await storage.getAllClasses();
+        const allSubjects = await storage.getAllSubjects();
+        const classData = allClasses.find(c => c.id === support.classId);
+        const subjectData = allSubjects.find(s => s.id === support.subjectId);
         
         if (teacher && classData && subjectData) {
           await sendBookingNotification({

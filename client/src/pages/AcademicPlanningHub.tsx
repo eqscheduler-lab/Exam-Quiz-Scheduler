@@ -146,9 +146,9 @@ const getStatusBadge = (status: Status) => {
     case "DRAFT":
       return <Badge variant="secondary">Draft</Badge>;
     case "PENDING_APPROVAL":
-      return <Badge variant="outline" className="text-amber-600 border-amber-600">Pending</Badge>;
+      return <Badge variant="outline" className="text-amber-600 border-amber-600">Processing</Badge>;
     case "APPROVED":
-      return <Badge className="bg-green-600">Approved</Badge>;
+      return <Badge className="bg-green-600">Confirmed</Badge>;
     case "REJECTED":
       return <Badge variant="destructive">Rejected</Badge>;
   }
@@ -263,7 +263,7 @@ export default function AcademicPlanningHub() {
     mutationFn: (id: number) => apiRequest("POST", `/api/learning-summaries/${id}/submit`),
     onSuccess: () => {
       invalidateSummaries();
-      toast({ title: "Submitted for approval" });
+      toast({ title: "Booking confirmed", description: "A confirmation email has been sent" });
     }
   });
 
@@ -338,7 +338,7 @@ export default function AcademicPlanningHub() {
     mutationFn: (id: number) => apiRequest("POST", `/api/learning-support/${id}/submit`),
     onSuccess: () => {
       invalidateSupport();
-      toast({ title: "Submitted for approval" });
+      toast({ title: "Booking confirmed", description: "A confirmation email has been sent" });
     }
   });
 
@@ -823,10 +823,12 @@ export default function AcademicPlanningHub() {
                                     <Button 
                                       size="icon" 
                                       variant="ghost"
+                                      className="text-green-600"
                                       onClick={() => submitSummaryMutation.mutate(s.id)}
                                       data-testid={`button-submit-summary-${s.id}`}
+                                      title="Confirm booking"
                                     >
-                                      <Send className="h-4 w-4" />
+                                      <Check className="h-4 w-4" />
                                     </Button>
                                     <Button 
                                       size="icon" 
@@ -847,38 +849,6 @@ export default function AcademicPlanningHub() {
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                )}
-                                {isOwner && s.status === "PENDING_APPROVAL" && (
-                                  <Button 
-                                    size="icon" 
-                                    variant="ghost"
-                                    onClick={() => { setEditingSummary(s); setSummaryDialogOpen(true); }}
-                                    data-testid={`button-edit-pending-summary-${s.id}`}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {canApprove && s.status === "PENDING_APPROVAL" && (
-                                  <>
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost"
-                                      className="text-green-600"
-                                      onClick={() => { setApprovalAction({ type: "summary", id: s.id, action: "approve" }); setApprovalDialogOpen(true); }}
-                                      data-testid={`button-approve-summary-${s.id}`}
-                                    >
-                                      <CheckCircle className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost"
-                                      className="text-red-600"
-                                      onClick={() => { setApprovalAction({ type: "summary", id: s.id, action: "reject" }); setApprovalDialogOpen(true); }}
-                                      data-testid={`button-reject-summary-${s.id}`}
-                                    >
-                                      <XCircle className="h-4 w-4" />
-                                    </Button>
-                                  </>
                                 )}
                               </div>
                             </TableCell>
@@ -1299,10 +1269,12 @@ export default function AcademicPlanningHub() {
                                       <Button 
                                         size="icon" 
                                         variant="ghost"
+                                        className="text-green-600"
                                         onClick={() => submitSupportMutation.mutate(s.id)}
                                         data-testid={`button-submit-support-${s.id}`}
+                                        title="Confirm booking"
                                       >
-                                        <Send className="h-4 w-4" />
+                                        <Check className="h-4 w-4" />
                                       </Button>
                                       <Button 
                                         size="icon" 
@@ -1336,38 +1308,6 @@ export default function AcademicPlanningHub() {
                                           <ClipboardCheck className="h-4 w-4" />
                                         </Button>
                                       )}
-                                    </>
-                                  )}
-                                  {isOwner && s.status === "PENDING_APPROVAL" && (
-                                    <Button 
-                                      size="icon" 
-                                      variant="ghost"
-                                      onClick={() => { setEditingSupport(s); setSupportSessionType(s.sessionType || ""); setSapetDate(s.sapetDate ? format(new Date(s.sapetDate), "yyyy-MM-dd") : ""); setSupportDialogOpen(true); }}
-                                      data-testid={`button-edit-pending-support-${s.id}`}
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                  )}
-                                  {canApprove && s.status === "PENDING_APPROVAL" && (
-                                    <>
-                                      <Button 
-                                        size="icon" 
-                                        variant="ghost"
-                                        className="text-green-600"
-                                        onClick={() => { setApprovalAction({ type: "support", id: s.id, action: "approve" }); setApprovalDialogOpen(true); }}
-                                        data-testid={`button-approve-support-${s.id}`}
-                                      >
-                                        <CheckCircle className="h-4 w-4" />
-                                      </Button>
-                                      <Button 
-                                        size="icon" 
-                                        variant="ghost"
-                                        className="text-red-600"
-                                        onClick={() => { setApprovalAction({ type: "support", id: s.id, action: "reject" }); setApprovalDialogOpen(true); }}
-                                        data-testid={`button-reject-support-${s.id}`}
-                                      >
-                                        <XCircle className="h-4 w-4" />
-                                      </Button>
                                     </>
                                   )}
                                 </div>
