@@ -9,7 +9,7 @@ import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
-import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes, userRoles } from "../shared/schema";
+import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes, userRoles, departments } from "../shared/schema";
 import { getSendGridClient } from "./sendgrid";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -452,8 +452,6 @@ export async function registerRoutes(
       const errors: string[] = [];
       const defaultPassword = await bcrypt.hash("Staff123", 10);
       
-      const validDepartments = ["SCIENCE", "MATHEMATICS", "ENGLISH", "ARABIC", "SOCIAL_STUDIES", "PHYSICAL_EDUCATION", "ARTS", "TECHNOLOGY", "ISLAMIC_STUDIES", "FRENCH"];
-      
       for (const row of rows) {
         try {
           const { name, username, email, role, department } = row;
@@ -472,15 +470,15 @@ export async function registerRoutes(
           }
           
           // Handle department (optional field)
-          let normalizedDepartment: string | null = null;
+          let normalizedDepartment: typeof departments[number] | null = null;
           if (department && department.trim() !== "") {
             const deptUpper = department.toUpperCase().trim();
-            if (!validDepartments.includes(deptUpper)) {
-              errors.push(`Invalid department "${department}" for user ${username}. Valid departments: ${validDepartments.join(", ")}`);
+            if (!(departments as readonly string[]).includes(deptUpper)) {
+              errors.push(`Invalid department "${department}" for user ${username}. Valid departments: ${departments.join(", ")}`);
               failed++;
               continue;
             }
-            normalizedDepartment = deptUpper;
+            normalizedDepartment = deptUpper as typeof departments[number];
           }
           
           await storage.createUser({

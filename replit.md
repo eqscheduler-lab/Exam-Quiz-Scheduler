@@ -43,11 +43,24 @@ Preferred communication style: Simple, everyday language.
    - Homework: Unlimited per day
 3. **Role Permissions**:
    - Teachers: Create/manage their own exams, view schedules, cancel own bookings
-   - Lead Teachers: All Teacher permissions PLUS Vice Principal permissions (approve/reject entries, view analytics, manage all teachers' entries, view attendance for all sessions)
+   - Lead Teachers: All Teacher permissions PLUS department-specific approval authority (can only approve/reject entries from teachers within their assigned department)
    - Coordinators: View schedules, access learning summaries and SAPET analytics
    - Vice Principals: Approve/reject learning summaries and SAPET sessions, view all analytics, manage teacher entries
    - Principals: Same as Vice Principal with full oversight
    - Admins: Full access including user/subject/student management, bulk import, factory reset
+
+### Department System
+Staff can be assigned to one of 10 departments:
+- SCIENCE, MATHEMATICS, ENGLISH, ARABIC, SOCIAL_STUDIES, PHYSICAL_EDUCATION, ARTS, TECHNOLOGY, ISLAMIC_STUDIES, FRENCH
+
+**Department Management Page** (`/admin/departments`):
+- Overview statistics: Total departments, assigned staff count, unassigned staff count
+- Expandable accordion for each department showing members
+- Unassigned staff list with guidance to assign via Staff Management
+
+**Lead Teacher Department Authority**:
+- Lead Teachers can only approve/reject entries from teachers in their same department
+- Approval is denied if either Lead Teacher or teacher has no department assigned (null check enforced)
 
 ### PDF Export Feature
 The Schedule page (`/schedule`) offers two export options:
