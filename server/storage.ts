@@ -19,6 +19,7 @@ export interface IStorage {
   // Classes
   getAllClasses(): Promise<Class[]>;
   createClass(classData: { name: string }): Promise<Class>;
+  updateClass(id: number, classData: { name: string }): Promise<Class>;
   deleteClass(id: number): Promise<void>;
 
   // Subjects
@@ -138,6 +139,11 @@ export class DatabaseStorage implements IStorage {
   async createClass(classData: { name: string }): Promise<Class> {
     const [newClass] = await db.insert(classes).values(classData).returning();
     return newClass;
+  }
+
+  async updateClass(id: number, classData: { name: string }): Promise<Class> {
+    const [updatedClass] = await db.update(classes).set(classData).where(eq(classes.id, id)).returning();
+    return updatedClass;
   }
 
   async deleteClass(id: number): Promise<void> {

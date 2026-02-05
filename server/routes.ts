@@ -234,6 +234,21 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/classes/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const classId = parseInt(req.params.id);
+      if (!req.body.name) {
+        return res.status(400).json({ message: "Class name is required" });
+      }
+      const updatedClass = await storage.updateClass(classId, { name: req.body.name });
+      res.json(updatedClass);
+    } catch (err) {
+      console.error("Update class error:", err);
+      res.status(500).json({ message: "Failed to update class" });
+    }
+  });
+
   app.delete("/api/classes/:id", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
     try {

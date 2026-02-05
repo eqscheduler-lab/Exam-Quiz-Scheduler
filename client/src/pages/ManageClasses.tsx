@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, GraduationCap } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Plus, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { type Class } from "@shared/schema";
@@ -14,6 +16,8 @@ export default function ManageClasses() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newClassName, setNewClassName] = useState("");
+  const [editingClass, setEditingClass] = useState<Class | null>(null);
+  const [editClassName, setEditClassName] = useState("");
 
   const { data: classes, isLoading } = useQuery<Class[]>({
     queryKey: ["/api/classes"],
@@ -25,6 +29,7 @@ export default function ManageClasses() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
+        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) {
@@ -46,13 +51,28 @@ export default function ManageClasses() {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: number; name: string }) => {
+      return apiRequest("PATCH", `/api/classes/${id}`, { name });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/classes"] });
+      setEditingClass(null);
+      setEditClassName("");
+      toast({ title: "Success", description: "Class updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/classes/${id}`);
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to delete class");
-      }
+      return apiRequest("DELETE", `/api/classes/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/classes"] });
@@ -66,6 +86,11 @@ export default function ManageClasses() {
       });
     },
   });
+
+  const openEditDialog = (cls: Class) => {
+    setEditingClass(cls);
+    setEditClassName(cls.name);
+  };
 
   return (
     <Layout title="Class Management">
@@ -117,9 +142,19 @@ export default function ManageClasses() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => openEditDialog(cls)}
+                      data-testid={`button-edit-class-${cls.id}`}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
                       onClick={() => deleteMutation.mutate(cls.id)}
                       disabled={deleteMutation.isPending}
+                      data-testid={`button-delete-class-${cls.id}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -130,6 +165,38 @@ export default function ManageClasses() {
           </Table>
         </Card>
       </div>
+
+      <Dialog open={!!editingClass} onOpenChange={(open) => !open && setEditingClass(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Class</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editClassName">Class Name</Label>
+              <Input
+                id="editClassName"
+                value={editClassName}
+                onChange={(e) => setEditClassName(e.target.value)}
+                placeholder="e.g. A10 [AMT]/1"
+                data-testid="input-edit-class-name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingClass(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => editingClass && updateMutation.mutate({ id: editingClass.id, name: editClassName })}
+              disabled={!editClassName || updateMutation.isPending}
+              data-testid="button-save-class"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
