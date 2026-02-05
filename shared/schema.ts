@@ -156,6 +156,7 @@ export const learningSupport = pgTable("learning_support", {
   teacherId: integer("teacher_id").references(() => users.id).notNull(),
   sessionType: text("session_type"),
   teamsLink: text("teams_link"),
+  location: text("location"),
   sapetDay: text("sapet_day"),
   sapetDate: timestamp("sapet_date"),
   sapetTime: text("sapet_time"),

@@ -155,6 +155,7 @@ export default function AcademicPlanningHub() {
   const [emailAddresses, setEmailAddresses] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [emailType, setEmailType] = useState<"summaries" | "support">("support");
+  const [supportSessionType, setSupportSessionType] = useState<string>("");
 
   const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL";
   const isAdmin = user?.role === "ADMIN";
@@ -800,7 +801,12 @@ export default function AcademicPlanningHub() {
                     </Button>
                     <Dialog open={supportDialogOpen} onOpenChange={(open) => {
                       setSupportDialogOpen(open);
-                      if (!open) setEditingSupport(null);
+                      if (!open) {
+                        setEditingSupport(null);
+                        setSupportSessionType("");
+                      } else if (editingSupport) {
+                        setSupportSessionType(editingSupport.sessionType || "");
+                      }
                     }}>
                       <DialogTrigger asChild>
                         <Button size="sm" data-testid="button-add-support">
@@ -887,7 +893,11 @@ export default function AcademicPlanningHub() {
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="sessionType">Session Type</Label>
-                              <Select name="sessionType" defaultValue={editingSupport?.sessionType || ""}>
+                              <Select 
+                                name="sessionType" 
+                                defaultValue={editingSupport?.sessionType || ""}
+                                onValueChange={(value) => setSupportSessionType(value)}
+                              >
                                 <SelectTrigger data-testid="input-session-type">
                                   <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
@@ -897,16 +907,30 @@ export default function AcademicPlanningHub() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="teamsLink">Teams Link</Label>
-                              <Input 
-                                type="url"
-                                name="teamsLink"
-                                defaultValue={editingSupport?.teamsLink || ""}
-                                placeholder="https://teams.microsoft.com/..."
-                                data-testid="input-teams-link"
-                              />
-                            </div>
+                            {(supportSessionType === "online" || (!supportSessionType && editingSupport?.sessionType === "online")) && (
+                              <div className="space-y-2">
+                                <Label htmlFor="teamsLink">Teams Link</Label>
+                                <Input 
+                                  type="url"
+                                  name="teamsLink"
+                                  defaultValue={editingSupport?.teamsLink || ""}
+                                  placeholder="https://teams.microsoft.com/..."
+                                  data-testid="input-teams-link"
+                                />
+                              </div>
+                            )}
+                            {(supportSessionType === "in_school" || (!supportSessionType && editingSupport?.sessionType === "in_school")) && (
+                              <div className="space-y-2">
+                                <Label htmlFor="location">Location</Label>
+                                <Input 
+                                  type="text"
+                                  name="location"
+                                  defaultValue={editingSupport?.location || ""}
+                                  placeholder="e.g., Room 101, Library, Lab A"
+                                  data-testid="input-location"
+                                />
+                              </div>
+                            )}
                             <div className="grid grid-cols-3 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="sapetDay">SAPET Day</Label>
