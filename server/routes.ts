@@ -2384,10 +2384,18 @@ export async function registerRoutes(
     
     try {
       const learningSupportId = Number(req.params.id);
+      const user = req.user as any;
       const support = await storage.getLearningSupportById(learningSupportId);
       
       if (!support) {
         return res.status(404).json({ message: "Learning support session not found" });
+      }
+      
+      // Teachers can only view their own sessions' attendance
+      // Admin, Principal, Vice Principal can view all
+      const canViewAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL";
+      if (support.teacherId !== user.id && !canViewAll) {
+        return res.status(403).json({ message: "You can only view attendance for your own sessions" });
       }
       
       const attendance = await storage.getSapetAttendance(learningSupportId);
@@ -2403,10 +2411,18 @@ export async function registerRoutes(
     
     try {
       const learningSupportId = Number(req.params.id);
+      const user = req.user as any;
       const support = await storage.getLearningSupportById(learningSupportId);
       
       if (!support) {
         return res.status(404).json({ message: "Learning support session not found" });
+      }
+      
+      // Teachers can only view students for their own sessions
+      // Admin, Principal, Vice Principal can view all
+      const canViewAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL";
+      if (support.teacherId !== user.id && !canViewAll) {
+        return res.status(403).json({ message: "You can only view students for your own sessions" });
       }
       
       const students = await storage.getStudentsByClass(support.classId);
@@ -2435,9 +2451,10 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Learning support session not found" });
       }
       
-      // Only the teacher who created the session or admin can mark attendance
-      if (support.teacherId !== user.id && user.role !== "ADMIN") {
-        return res.status(403).json({ message: "Only the session teacher or admin can mark attendance" });
+      // Only the teacher who created the session or admin/principal/vice principal can mark attendance
+      const canMarkAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL";
+      if (support.teacherId !== user.id && !canMarkAll) {
+        return res.status(403).json({ message: "Only the session teacher or administrators can mark attendance" });
       }
       
       const savedAttendance = await storage.saveSapetAttendance(learningSupportId, attendance, user.id);

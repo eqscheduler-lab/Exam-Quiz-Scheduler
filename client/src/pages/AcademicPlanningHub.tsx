@@ -1180,7 +1180,7 @@ export default function AcademicPlanningHub() {
                                               Teams Link
                                             </a>
                                           )}
-                                          {(user?.id === session.teacherId || user?.role === "ADMIN") && (
+                                          {(user?.id === session.teacherId || canApprove) && (
                                             <Button
                                               size="sm"
                                               variant="outline"
@@ -1219,7 +1219,7 @@ export default function AcademicPlanningHub() {
                                           <ExternalLink className="w-3 h-3" /> Teams
                                         </a>
                                       )}
-                                      {(user?.id === session.teacherId || user?.role === "ADMIN") && (
+                                      {(user?.id === session.teacherId || canApprove) && (
                                         <Button
                                           size="sm"
                                           variant="outline"
@@ -1304,24 +1304,28 @@ export default function AcademicPlanningHub() {
                                       </Button>
                                     </>
                                   )}
-                                  {isOwner && s.status === "APPROVED" && (
+                                  {s.status === "APPROVED" && (
                                     <>
-                                      <Button 
-                                        size="icon" 
-                                        variant="ghost"
-                                        onClick={() => { setEditingSupport(s); setSupportSessionType(s.sessionType || ""); setSapetDate(s.sapetDate ? format(new Date(s.sapetDate), "yyyy-MM-dd") : ""); setSupportDialogOpen(true); }}
-                                        data-testid={`button-edit-approved-support-${s.id}`}
-                                      >
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() => openAttendanceDialog(s)}
-                                        data-testid={`button-attendance-support-${s.id}`}
-                                      >
-                                        <ClipboardCheck className="h-4 w-4" />
-                                      </Button>
+                                      {isOwner && (
+                                        <Button 
+                                          size="icon" 
+                                          variant="ghost"
+                                          onClick={() => { setEditingSupport(s); setSupportSessionType(s.sessionType || ""); setSapetDate(s.sapetDate ? format(new Date(s.sapetDate), "yyyy-MM-dd") : ""); setSupportDialogOpen(true); }}
+                                          data-testid={`button-edit-approved-support-${s.id}`}
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      {(isOwner || canApprove) && (
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          onClick={() => openAttendanceDialog(s)}
+                                          data-testid={`button-attendance-support-${s.id}`}
+                                        >
+                                          <ClipboardCheck className="h-4 w-4" />
+                                        </Button>
+                                      )}
                                     </>
                                   )}
                                   {canApprove && s.status === "PENDING_APPROVAL" && (
