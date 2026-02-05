@@ -818,6 +818,34 @@ export default function AcademicPlanningHub() {
                           <div className="grid gap-4 py-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
+                                <Label htmlFor="term">Term</Label>
+                                <Select name="term" defaultValue={editingSupport?.term || selectedTerm}>
+                                  <SelectTrigger data-testid="input-support-term">
+                                    <SelectValue placeholder="Select term" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="TERM_1">Term 1</SelectItem>
+                                    <SelectItem value="TERM_2">Term 2</SelectItem>
+                                    <SelectItem value="TERM_3">Term 3</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="weekNumber">Week</Label>
+                                <Select name="weekNumber" defaultValue={editingSupport?.weekNumber?.toString() || selectedWeek.toString()}>
+                                  <SelectTrigger data-testid="input-support-week">
+                                    <SelectValue placeholder="Select week" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {Array.from({ length: 15 }, (_, i) => i + 1).map(w => (
+                                      <SelectItem key={w} value={w.toString()}>Week {w}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
                                 <Label htmlFor="grade">Grade</Label>
                                 <Select name="grade" defaultValue={editingSupport?.grade || ""}>
                                   <SelectTrigger data-testid="input-support-grade">
