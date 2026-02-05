@@ -156,6 +156,8 @@ export default function AcademicPlanningHub() {
   const [emailSending, setEmailSending] = useState(false);
   const [emailType, setEmailType] = useState<"summaries" | "support">("support");
   const [supportSessionType, setSupportSessionType] = useState<string>("");
+  const [sapetDate, setSapetDate] = useState<string>("");
+  const [sapetDateError, setSapetDateError] = useState<string>("");
 
   const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL";
   const isAdmin = user?.role === "ADMIN";
@@ -351,6 +353,11 @@ export default function AcademicPlanningHub() {
     
     if (teamsLink && !/^https?:\/\/.+/i.test(teamsLink)) {
       toast({ title: "Invalid Teams link", description: "Please enter a valid URL starting with http:// or https://", variant: "destructive" });
+      return;
+    }
+    
+    if (sapetDateError) {
+      toast({ title: "Invalid date", description: "Please select a Saturday or Sunday for SAPET Date", variant: "destructive" });
       return;
     }
     
@@ -804,8 +811,12 @@ export default function AcademicPlanningHub() {
                       if (!open) {
                         setEditingSupport(null);
                         setSupportSessionType("");
+                        setSapetDate("");
+                        setSapetDateError("");
                       } else if (editingSupport) {
                         setSupportSessionType(editingSupport.sessionType || "");
+                        setSapetDate(editingSupport.sapetDate || "");
+                        setSapetDateError("");
                       }
                     }}>
                       <DialogTrigger asChild>
@@ -949,9 +960,29 @@ export default function AcademicPlanningHub() {
                                 <Input 
                                   type="date"
                                   name="sapetDate"
-                                  defaultValue={editingSupport?.sapetDate || ""}
+                                  value={sapetDate}
+                                  onChange={(e) => {
+                                    const dateValue = e.target.value;
+                                    if (dateValue) {
+                                      const date = new Date(dateValue + "T00:00:00");
+                                      const day = date.getDay();
+                                      if (day !== 0 && day !== 6) {
+                                        setSapetDateError("Please select a Saturday or Sunday");
+                                        setSapetDate(dateValue);
+                                      } else {
+                                        setSapetDateError("");
+                                        setSapetDate(dateValue);
+                                      }
+                                    } else {
+                                      setSapetDateError("");
+                                      setSapetDate("");
+                                    }
+                                  }}
                                   data-testid="input-sapet-date"
                                 />
+                                {sapetDateError && (
+                                  <p className="text-sm text-destructive">{sapetDateError}</p>
+                                )}
                               </div>
                               <div className="space-y-2">
                                 <Label htmlFor="sapetTime">SAPET Time</Label>
