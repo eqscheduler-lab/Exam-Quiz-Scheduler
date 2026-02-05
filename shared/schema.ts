@@ -4,6 +4,7 @@ import { z } from "zod";
 
 // Enums
 export const userRoles = ["TEACHER", "ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR", "LEAD_TEACHER"] as const;
+export const departments = ["SCIENCE", "MATHEMATICS", "ENGLISH", "ARABIC", "SOCIAL_STUDIES", "PHYSICAL_EDUCATION", "ARTS", "TECHNOLOGY", "ISLAMIC_STUDIES", "FRENCH"] as const;
 export const classPrograms = ["AET", "AMT", "ENI", "CAI", "ASP"] as const;
 export const examTypes = ["HOMEWORK", "QUIZ"] as const;
 export const examStatuses = ["SCHEDULED", "CANCELLED"] as const;
@@ -73,6 +74,7 @@ export const users = pgTable("users", {
   role: text("role", { enum: userRoles }).notNull().default("TEACHER"),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  department: text("department", { enum: departments }),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastAccessedAt: timestamp("last_accessed_at"),
