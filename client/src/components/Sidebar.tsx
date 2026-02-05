@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   FileUp,
   UserX,
-  ClipboardList
+  ClipboardList,
+  Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -183,6 +184,16 @@ export function Sidebar() {
             )}>
               <Users className="w-4 h-4" />
               Manage Staff
+            </Link>
+
+            <Link href="/admin/departments" data-testid="link-admin-departments" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              isActive("/admin/departments") 
+                ? "bg-primary/10 text-primary shadow-sm" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}>
+              <Building2 className="w-4 h-4" />
+              Departments
             </Link>
 
             <Link href="/admin/subjects" className={cn(
