@@ -2096,6 +2096,76 @@ export async function registerRoutes(
     }
   });
 
+  // SAPET Attendance routes
+  app.get("/api/learning-support/:id/attendance", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const learningSupportId = Number(req.params.id);
+      const support = await storage.getLearningSupportById(learningSupportId);
+      
+      if (!support) {
+        return res.status(404).json({ message: "Learning support session not found" });
+      }
+      
+      const attendance = await storage.getSapetAttendance(learningSupportId);
+      res.json(attendance);
+    } catch (err) {
+      console.error("Error fetching attendance:", err);
+      res.status(500).json({ message: "Failed to fetch attendance" });
+    }
+  });
+
+  app.get("/api/learning-support/:id/students", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const learningSupportId = Number(req.params.id);
+      const support = await storage.getLearningSupportById(learningSupportId);
+      
+      if (!support) {
+        return res.status(404).json({ message: "Learning support session not found" });
+      }
+      
+      const students = await storage.getStudentsByClass(support.classId);
+      res.json(students);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+      res.status(500).json({ message: "Failed to fetch students" });
+    }
+  });
+
+  app.post("/api/learning-support/:id/attendance", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const learningSupportId = Number(req.params.id);
+      const user = req.user as any;
+      const { attendance } = req.body;
+      
+      if (!Array.isArray(attendance)) {
+        return res.status(400).json({ message: "Attendance must be an array" });
+      }
+      
+      const support = await storage.getLearningSupportById(learningSupportId);
+      
+      if (!support) {
+        return res.status(404).json({ message: "Learning support session not found" });
+      }
+      
+      // Only the teacher who created the session or admin can mark attendance
+      if (support.teacherId !== user.id && user.role !== "ADMIN") {
+        return res.status(403).json({ message: "Only the session teacher or admin can mark attendance" });
+      }
+      
+      const savedAttendance = await storage.saveSapetAttendance(learningSupportId, attendance, user.id);
+      res.json(savedAttendance);
+    } catch (err) {
+      console.error("Error saving attendance:", err);
+      res.status(500).json({ message: "Failed to save attendance" });
+    }
+  });
+
   return httpServer;
 }
 
