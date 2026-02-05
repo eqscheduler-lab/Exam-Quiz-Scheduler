@@ -1255,7 +1255,7 @@ export async function registerRoutes(
       // Sessions by term and week
       const sessionsByTermWeek: Record<string, number> = {};
       allSessionsRaw.forEach(session => {
-        const key = `Term ${session.term} - Week ${session.week}`;
+        const key = `Term ${session.term} - Week ${session.weekNumber}`;
         sessionsByTermWeek[key] = (sessionsByTermWeek[key] || 0) + 1;
       });
 

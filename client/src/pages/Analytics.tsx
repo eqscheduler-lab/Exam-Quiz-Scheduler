@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle, Users, Calendar, TrendingUp } from "lucide-react";
+import { Loader2, BarChart3, BookOpen, GraduationCap, FileText, ClipboardList, Trash2, AlertTriangle, Users, Calendar, TrendingUp, School, UserCheck, UserX } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -51,7 +51,27 @@ interface WeeklyUtilizationData {
   totalEntries: number;
 }
 
-type TabType = "overview" | "classes" | "subjects" | "teachers" | "trends";
+type TabType = "overview" | "classes" | "subjects" | "teachers" | "trends" | "sapet";
+
+interface SapetAnalyticsData {
+  summary: {
+    totalSessions: number;
+    approvedSessions: number;
+    pendingSessions: number;
+    inSchoolSessions: number;
+    onlineSessions: number;
+    totalStudentsTracked: number;
+    attendanceRate: number;
+    presentCount: number;
+    absentCount: number;
+  };
+  sessionsPerTeacher: { teacherName: string; totalSessions: number; approvedSessions: number; pendingSessions: number; draftSessions: number }[];
+  sessionsByClass: { className: string; count: number }[];
+  sessionsByDay: Record<string, number>;
+  sessionsByTermWeek: Record<string, number>;
+  statusDistribution: { draft: number; pending: number; approved: number; rejected: number };
+  attendancePerSession: { sessionId: number; present: number; absent: number; total: number }[];
+}
 
 export default function Analytics() {
   const { user } = useAuth();
@@ -71,6 +91,10 @@ export default function Analytics() {
 
   const { data: weeklyUtilization, isLoading: isLoadingWeekly } = useQuery<WeeklyUtilizationData[]>({
     queryKey: ["/api/analytics/weekly-utilization"],
+  });
+
+  const { data: sapetAnalytics, isLoading: isLoadingSapet } = useQuery<SapetAnalyticsData>({
+    queryKey: ["/api/analytics/sapet"],
   });
 
   const clearHistoryMutation = useMutation({
@@ -220,6 +244,7 @@ export default function Analytics() {
     { id: "subjects", label: "By Subject", icon: BookOpen },
     { id: "teachers", label: "By Teacher", icon: Users },
     { id: "trends", label: "Weekly Trends", icon: TrendingUp },
+    { id: "sapet", label: "SAPET Analysis", icon: School },
   ];
 
   return (
@@ -773,6 +798,405 @@ export default function Analytics() {
                     </Table>
                   </CardContent>
                 </Card>
+              </div>
+            )}
+
+            {/* SAPET Analysis Tab */}
+            {activeTab === "sapet" && (
+              <div className="space-y-6">
+                {isLoadingSapet ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : sapetAnalytics ? (
+                  <>
+                    {/* SAPET Summary Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <School className="w-8 h-8 text-primary mb-2" />
+                            <p className="text-2xl font-bold">{sapetAnalytics.summary.totalSessions}</p>
+                            <p className="text-sm text-muted-foreground">Total Sessions</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <UserCheck className="w-8 h-8 text-green-500 mb-2" />
+                            <p className="text-2xl font-bold">{sapetAnalytics.summary.attendanceRate}%</p>
+                            <p className="text-sm text-muted-foreground">Attendance Rate</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <Users className="w-8 h-8 text-blue-500 mb-2" />
+                            <p className="text-2xl font-bold">{sapetAnalytics.summary.presentCount}</p>
+                            <p className="text-sm text-muted-foreground">Present Records</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <UserX className="w-8 h-8 text-red-500 mb-2" />
+                            <p className="text-2xl font-bold">{sapetAnalytics.summary.absentCount}</p>
+                            <p className="text-sm text-muted-foreground">Absent Records</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* In-School vs Online Sessions */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <School className="w-5 h-5" />
+                            Session Delivery Mode
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { name: "In-School", value: sapetAnalytics.summary.inSchoolSessions, color: "#22c55e" },
+                                    { name: "Online (Teams)", value: sapetAnalytics.summary.onlineSessions, color: "#3b82f6" }
+                                  ].filter(d => d.value > 0)}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                >
+                                  {[
+                                    { name: "In-School", value: sapetAnalytics.summary.inSchoolSessions, color: "#22c55e" },
+                                    { name: "Online (Teams)", value: sapetAnalytics.summary.onlineSessions, color: "#3b82f6" }
+                                  ].filter(d => d.value > 0).map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="flex justify-center gap-6 mt-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                              <span className="text-sm">In-School: {sapetAnalytics.summary.inSchoolSessions}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                              <span className="text-sm">Online: {sapetAnalytics.summary.onlineSessions}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <ClipboardList className="w-5 h-5" />
+                            Session Status Distribution
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { name: "Draft", value: sapetAnalytics.statusDistribution.draft, color: "#6b7280" },
+                                    { name: "Pending", value: sapetAnalytics.statusDistribution.pending, color: "#f59e0b" },
+                                    { name: "Approved", value: sapetAnalytics.statusDistribution.approved, color: "#22c55e" },
+                                    { name: "Rejected", value: sapetAnalytics.statusDistribution.rejected, color: "#ef4444" }
+                                  ].filter(d => d.value > 0)}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                >
+                                  {[
+                                    { name: "Draft", value: sapetAnalytics.statusDistribution.draft, color: "#6b7280" },
+                                    { name: "Pending", value: sapetAnalytics.statusDistribution.pending, color: "#f59e0b" },
+                                    { name: "Approved", value: sapetAnalytics.statusDistribution.approved, color: "#22c55e" },
+                                    { name: "Rejected", value: sapetAnalytics.statusDistribution.rejected, color: "#ef4444" }
+                                  ].filter(d => d.value > 0).map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="flex justify-center flex-wrap gap-4 mt-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                              <span className="text-sm">Draft: {sapetAnalytics.statusDistribution.draft}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                              <span className="text-sm">Pending: {sapetAnalytics.statusDistribution.pending}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                              <span className="text-sm">Approved: {sapetAnalytics.statusDistribution.approved}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                              <span className="text-sm">Rejected: {sapetAnalytics.statusDistribution.rejected}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Sessions Per Teacher */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5" />
+                          Sessions Per Teacher
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {sapetAnalytics.sessionsPerTeacher.length > 0 ? (
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={sapetAnalytics.sessionsPerTeacher.sort((a, b) => b.totalSessions - a.totalSessions)} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" />
+                                <YAxis dataKey="teacherName" type="category" width={150} tick={{ fontSize: 12 }} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="approvedSessions" name="Approved" stackId="a" fill="#22c55e" />
+                                <Bar dataKey="pendingSessions" name="Pending" stackId="a" fill="#f59e0b" />
+                                <Bar dataKey="draftSessions" name="Draft" stackId="a" fill="#6b7280" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <p className="text-center text-muted-foreground py-8">No teacher session data available</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Sessions By Class */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <GraduationCap className="w-5 h-5" />
+                          Sessions By Class
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {sapetAnalytics.sessionsByClass.length > 0 ? (
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={sapetAnalytics.sessionsByClass.sort((a, b) => b.count - a.count)}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="className" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+                                <YAxis />
+                                <Tooltip />
+                                <Bar dataKey="count" name="Sessions" fill="#6366f1" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <p className="text-center text-muted-foreground py-8">No class session data available</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Sessions by Day */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5" />
+                            Sessions By Day
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                              <span className="font-medium">Saturday</span>
+                              <Badge variant="secondary" className="text-lg px-4">{sapetAnalytics.sessionsByDay.Saturday || 0}</Badge>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                              <span className="font-medium">Sunday</span>
+                              <Badge variant="secondary" className="text-lg px-4">{sapetAnalytics.sessionsByDay.Sunday || 0}</Badge>
+                            </div>
+                            {sapetAnalytics.sessionsByDay.Other > 0 && (
+                              <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                                <span className="font-medium">Other Days</span>
+                                <Badge variant="outline" className="text-lg px-4">{sapetAnalytics.sessionsByDay.Other}</Badge>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5" />
+                            Attendance Overview
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                              <div className="flex items-center gap-2">
+                                <UserCheck className="w-5 h-5 text-green-600" />
+                                <span className="font-medium">Present</span>
+                              </div>
+                              <Badge className="bg-green-500 text-lg px-4">{sapetAnalytics.summary.presentCount}</Badge>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
+                              <div className="flex items-center gap-2">
+                                <UserX className="w-5 h-5 text-red-600" />
+                                <span className="font-medium">Absent</span>
+                              </div>
+                              <Badge className="bg-red-500 text-lg px-4">{sapetAnalytics.summary.absentCount}</Badge>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                              <span className="font-medium">Overall Attendance Rate</span>
+                              <Badge variant="outline" className="text-lg px-4">{sapetAnalytics.summary.attendanceRate}%</Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Teacher Session Details Table */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <ClipboardList className="w-5 h-5" />
+                          Teacher Session Summary
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Teacher</TableHead>
+                              <TableHead className="text-center">Total Sessions</TableHead>
+                              <TableHead className="text-center">Approved</TableHead>
+                              <TableHead className="text-center">Pending</TableHead>
+                              <TableHead className="text-center">Draft</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sapetAnalytics.sessionsPerTeacher.length > 0 ? (
+                              sapetAnalytics.sessionsPerTeacher.sort((a, b) => b.totalSessions - a.totalSessions).map((teacher, idx) => (
+                                <TableRow key={idx}>
+                                  <TableCell className="font-medium">{teacher.teacherName}</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="secondary">{teacher.totalSessions}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge className="bg-green-500">{teacher.approvedSessions}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge className="bg-yellow-500">{teacher.pendingSessions}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline">{teacher.draftSessions}</Badge>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                                  No teacher data available
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    {/* Action Plan Insights */}
+                    <Card className="border-primary">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-primary">
+                          <FileText className="w-5 h-5" />
+                          Action Plan Insights for Academic Advisors
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Session Coverage</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {sapetAnalytics.summary.totalSessions === 0 
+                                ? "No SAPET sessions have been scheduled yet. Consider coordinating with teachers to plan support sessions."
+                                : sapetAnalytics.summary.approvedSessions < sapetAnalytics.summary.totalSessions * 0.5
+                                  ? `Only ${sapetAnalytics.summary.approvedSessions} of ${sapetAnalytics.summary.totalSessions} sessions are approved. Follow up on pending approvals to ensure students receive support.`
+                                  : `Good progress! ${sapetAnalytics.summary.approvedSessions} sessions are approved and ready.`
+                              }
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Attendance Analysis</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {sapetAnalytics.summary.totalStudentsTracked === 0
+                                ? "No attendance records yet. Remind teachers to mark attendance for each session."
+                                : sapetAnalytics.summary.attendanceRate < 70
+                                  ? `Attendance rate is ${sapetAnalytics.summary.attendanceRate}% - below target. Consider reaching out to frequently absent students.`
+                                  : `Excellent attendance rate of ${sapetAnalytics.summary.attendanceRate}%! Continue monitoring for consistency.`
+                              }
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Delivery Mode</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {sapetAnalytics.summary.inSchoolSessions + sapetAnalytics.summary.onlineSessions === 0
+                                ? "No session delivery mode data available yet."
+                                : `${sapetAnalytics.summary.inSchoolSessions} in-school and ${sapetAnalytics.summary.onlineSessions} online sessions. ${
+                                    sapetAnalytics.summary.onlineSessions > sapetAnalytics.summary.inSchoolSessions 
+                                      ? "Consider increasing in-person sessions for better engagement."
+                                      : "Good balance between in-person and online delivery."
+                                  }`
+                              }
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Teacher Engagement</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {sapetAnalytics.sessionsPerTeacher.length === 0
+                                ? "No teacher session data available yet."
+                                : `${sapetAnalytics.sessionsPerTeacher.length} teachers are conducting SAPET sessions. ${
+                                    sapetAnalytics.sessionsPerTeacher.filter(t => t.totalSessions >= 3).length
+                                  } teachers have 3+ sessions planned.`
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <School className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No SAPET analytics data available</p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
           </>
