@@ -2044,6 +2044,14 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Learning summary not found" });
       }
       
+      // Lead Teachers can only approve entries from their department
+      if (user.role === "LEAD_TEACHER") {
+        const teacher = await storage.getUser(existing.teacherId);
+        if (!teacher || teacher.department !== user.department) {
+          return res.status(403).json({ message: "Lead Teachers can only approve entries from their own department" });
+        }
+      }
+      
       // Create exam in scheduler if quiz date is set
       let linkedExamId = existing.linkedExamId;
       if (existing.quizDate) {
@@ -2096,6 +2104,14 @@ export async function registerRoutes(
       
       if (!existing) {
         return res.status(404).json({ message: "Learning summary not found" });
+      }
+      
+      // Lead Teachers can only reject entries from their department
+      if (user.role === "LEAD_TEACHER") {
+        const teacher = await storage.getUser(existing.teacherId);
+        if (!teacher || teacher.department !== user.department) {
+          return res.status(403).json({ message: "Lead Teachers can only reject entries from their own department" });
+        }
       }
       
       // Remove from scheduler if previously approved
@@ -2429,6 +2445,14 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Learning support not found" });
       }
       
+      // Lead Teachers can only approve entries from their department
+      if (user.role === "LEAD_TEACHER") {
+        const teacher = await storage.getUser(existing.teacherId);
+        if (!teacher || teacher.department !== user.department) {
+          return res.status(403).json({ message: "Lead Teachers can only approve entries from their own department" });
+        }
+      }
+      
       const support = await storage.updateLearningSupport(id, { 
         status: "APPROVED",
         approvedById: user.id,
@@ -2456,6 +2480,14 @@ export async function registerRoutes(
       
       if (!existing) {
         return res.status(404).json({ message: "Learning support not found" });
+      }
+      
+      // Lead Teachers can only reject entries from their department
+      if (user.role === "LEAD_TEACHER") {
+        const teacher = await storage.getUser(existing.teacherId);
+        if (!teacher || teacher.department !== user.department) {
+          return res.status(403).json({ message: "Lead Teachers can only reject entries from their own department" });
+        }
       }
       
       const support = await storage.updateLearningSupport(id, { 
