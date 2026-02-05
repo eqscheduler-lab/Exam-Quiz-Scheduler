@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, UserPlus, Mail, Shield, Trash2, Loader2, Download, Pencil, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@shared/routes";
-import { type User, userRoles } from "@shared/schema";
+import { type User, userRoles, departments } from "@shared/schema";
 import { useState } from "react";
 import {
   Dialog,
@@ -58,7 +58,7 @@ export default function ManageStaff() {
   const exportStaffList = () => {
     if (!staff) return;
     
-    const headers = ["Name", "Username", "Email", "Role", "Status", "Default Password"];
+    const headers = ["Name", "Username", "Email", "Role", "Department", "Status", "Default Password"];
     const rows = [...staff]
       .sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0))
       .map(member => [
@@ -66,6 +66,7 @@ export default function ManageStaff() {
         member.username,
         member.email,
         member.role,
+        member.department || "",
         member.isActive ? "Active" : "Inactive",
         "Staff123"
       ]);
@@ -136,7 +137,7 @@ export default function ManageStaff() {
   });
 
   const editMutation = useMutation({
-    mutationFn: async (data: { id: number; name: string; email: string; role: string; isActive: boolean }) => {
+    mutationFn: async (data: { id: number; name: string; email: string; role: string; isActive: boolean; department: string | null }) => {
       const res = await apiRequest("PATCH", `/api/admin/users/${data.id}`, data);
       if (!res.ok) {
         const err = await res.json();
@@ -269,6 +270,31 @@ export default function ManageStaff() {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="department"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Department</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a department" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="">None</SelectItem>
+                            {departments.map((dept) => (
+                              <SelectItem key={dept} value={dept}>
+                                {dept.replace(/_/g, " ")}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <DialogFooter className="pt-4">
                     <Button type="submit" disabled={createMutation.isPending} className="w-full">
                       {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -290,6 +316,7 @@ export default function ManageStaff() {
                 <TableHead>Username</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Department</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -297,7 +324,7 @@ export default function ManageStaff() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">Loading staff...</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8">Loading staff...</TableCell>
                 </TableRow>
               ) : [...(staff || [])].sort((a, b) => (b.isActive ? 1 : 0) - (a.isActive ? 1 : 0)).map((member) => (
                 <TableRow key={member.id}>
@@ -308,6 +335,15 @@ export default function ManageStaff() {
                     <Badge variant="outline" className="font-semibold uppercase text-[10px]">
                       {member.role}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {member.department ? (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {member.department.replace(/_/g, " ")}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={member.isActive ? "default" : "secondary"} className="text-[10px]">
@@ -365,12 +401,14 @@ export default function ManageStaff() {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 const formData = new FormData(e.currentTarget);
+                const dept = formData.get("department") as string;
                 editMutation.mutate({
                   id: editingUser.id,
                   name: formData.get("name") as string,
                   email: formData.get("email") as string,
                   role: formData.get("role") as string,
                   isActive: formData.get("isActive") === "true",
+                  department: dept === "" ? null : dept,
                 });
               }} className="space-y-4">
                 <div className="space-y-2">
@@ -390,6 +428,20 @@ export default function ManageStaff() {
                     <SelectContent>
                       {userRoles.map((role) => (
                         <SelectItem key={role} value={role}>{role}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Department</label>
+                  <Select name="department" defaultValue={editingUser.department || ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept} value={dept}>{dept.replace(/_/g, " ")}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
