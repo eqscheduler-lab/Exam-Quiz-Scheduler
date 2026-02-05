@@ -848,6 +848,16 @@ export default function AcademicPlanningHub() {
                                     <Edit className="h-4 w-4" />
                                   </Button>
                                 )}
+                                {isOwner && s.status === "PENDING_APPROVAL" && (
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost"
+                                    onClick={() => { setEditingSummary(s); setSummaryDialogOpen(true); }}
+                                    data-testid={`button-edit-pending-summary-${s.id}`}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
                                 {canApprove && s.status === "PENDING_APPROVAL" && (
                                   <>
                                     <Button 
@@ -1327,6 +1337,16 @@ export default function AcademicPlanningHub() {
                                         </Button>
                                       )}
                                     </>
+                                  )}
+                                  {isOwner && s.status === "PENDING_APPROVAL" && (
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => { setEditingSupport(s); setSupportSessionType(s.sessionType || ""); setSapetDate(s.sapetDate ? format(new Date(s.sapetDate), "yyyy-MM-dd") : ""); setSupportDialogOpen(true); }}
+                                      data-testid={`button-edit-pending-support-${s.id}`}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
                                   )}
                                   {canApprove && s.status === "PENDING_APPROVAL" && (
                                     <>
