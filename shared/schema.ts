@@ -195,3 +195,19 @@ export type LearningSummary = typeof learningSummaries.$inferSelect;
 export type InsertLearningSummary = z.infer<typeof insertLearningSummarySchema>;
 export type LearningSupport = typeof learningSupport.$inferSelect;
 export type InsertLearningSupport = z.infer<typeof insertLearningSupportSchema>;
+
+// SAPET Session Attendance
+export const attendanceStatuses = ["PRESENT", "ABSENT"] as const;
+
+export const sapetAttendance = pgTable("sapet_attendance", {
+  id: serial("id").primaryKey(),
+  learningSupportId: integer("learning_support_id").references(() => learningSupport.id).notNull(),
+  studentId: integer("student_id").references(() => students.id).notNull(),
+  status: text("status", { enum: attendanceStatuses }).notNull().default("ABSENT"),
+  markedAt: timestamp("marked_at").defaultNow(),
+  markedById: integer("marked_by_id").references(() => users.id),
+});
+
+export const insertSapetAttendanceSchema = createInsertSchema(sapetAttendance).omit({ id: true, markedAt: true });
+export type SapetAttendance = typeof sapetAttendance.$inferSelect;
+export type InsertSapetAttendance = z.infer<typeof insertSapetAttendanceSchema>;

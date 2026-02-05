@@ -1,8 +1,8 @@
 import { db } from "./db";
 import {
-  users, subjects, students, examEvents, settings, classes, loginAudit, learningSummaries, learningSupport,
+  users, subjects, students, examEvents, settings, classes, loginAudit, learningSummaries, learningSupport, sapetAttendance,
   type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class, type LoginAudit, type InsertLoginAudit,
-  type LearningSummary, type InsertLearningSummary, type LearningSupport, type InsertLearningSupport
+  type LearningSummary, type InsertLearningSummary, type LearningSupport, type InsertLearningSupport, type SapetAttendance, type InsertSapetAttendance
 } from "@shared/schema";
 import { eq, and, count, gte, lte, desc, sql } from "drizzle-orm";
 
@@ -84,6 +84,11 @@ export interface IStorage {
   updateLearningSupport(id: number, support: Partial<InsertLearningSupport>): Promise<LearningSupport>;
   deleteLearningSupport(id: number): Promise<void>;
   getLearningSupportById(id: number): Promise<(LearningSupport & { class: Class; subject: Subject; teacher: User }) | undefined>;
+
+  // SAPET Attendance
+  getSapetAttendance(learningSupportId: number): Promise<(SapetAttendance & { student: typeof students.$inferSelect })[]>;
+  getStudentsByClass(classId: number): Promise<typeof students.$inferSelect[]>;
+  saveSapetAttendance(learningSupportId: number, attendanceData: { studentId: number; status: "PRESENT" | "ABSENT" }[], markedById: number): Promise<SapetAttendance[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -618,6 +623,47 @@ export class DatabaseStorage implements IStorage {
       subject: results[0].subject,
       teacher: results[0].teacher
     };
+  }
+
+  // SAPET Attendance
+  async getSapetAttendance(learningSupportId: number): Promise<(SapetAttendance & { student: typeof students.$inferSelect })[]> {
+    const results = await db.select({
+      attendance: sapetAttendance,
+      student: students
+    })
+    .from(sapetAttendance)
+    .innerJoin(students, eq(sapetAttendance.studentId, students.id))
+    .where(eq(sapetAttendance.learningSupportId, learningSupportId));
+
+    return results.map(r => ({
+      ...r.attendance,
+      student: r.student
+    }));
+  }
+
+  async getStudentsByClass(classId: number): Promise<typeof students.$inferSelect[]> {
+    return await db.select().from(students).where(eq(students.classId, classId));
+  }
+
+  async saveSapetAttendance(
+    learningSupportId: number, 
+    attendanceData: { studentId: number; status: "PRESENT" | "ABSENT" }[], 
+    markedById: number
+  ): Promise<SapetAttendance[]> {
+    // Delete existing attendance for this session
+    await db.delete(sapetAttendance).where(eq(sapetAttendance.learningSupportId, learningSupportId));
+    
+    // Insert new attendance records
+    if (attendanceData.length === 0) return [];
+    
+    const records = attendanceData.map(a => ({
+      learningSupportId,
+      studentId: a.studentId,
+      status: a.status,
+      markedById
+    }));
+    
+    return await db.insert(sapetAttendance).values(records).returning();
   }
 }
 
