@@ -1171,11 +1171,11 @@ export async function registerRoutes(
     }
   });
 
-  // === SAPET ANALYTICS ===
+  // === SAPET ANALYTICS (Admin/Principal/VP/Coordinator) ===
   app.get("/api/analytics/sapet", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const role = (req.user as any).role;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR"].includes(role)) {
       return res.sendStatus(403);
     }
 
@@ -1292,11 +1292,11 @@ export async function registerRoutes(
     }
   });
 
-  // === LEARNING SUMMARIES ANALYTICS (Admin/Principal/VP only) ===
+  // === LEARNING SUMMARIES ANALYTICS (Admin/Principal/VP/Coordinator) ===
   app.get("/api/analytics/learning-summaries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const role = (req.user as any).role;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR"].includes(role)) {
       return res.sendStatus(403);
     }
 

@@ -262,14 +262,16 @@ export default function Analytics() {
     '#14b8a6', '#f97316', '#d946ef', '#06b6d4', '#ef4444'
   ];
 
+  const canViewAcademicAnalytics = user && ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR"].includes(user.role);
+
   const tabs: { id: TabType; label: string; icon: any }[] = [
     { id: "overview", label: "Overview", icon: BarChart3 },
     { id: "classes", label: "By Class", icon: GraduationCap },
     { id: "subjects", label: "By Subject", icon: BookOpen },
     { id: "teachers", label: "By Teacher", icon: Users },
     { id: "trends", label: "Weekly Trends", icon: TrendingUp },
-    { id: "learning-summaries", label: "Learning Summaries", icon: FileText },
-    { id: "sapet", label: "SAPET Analysis", icon: School },
+    ...(canViewAcademicAnalytics ? [{ id: "learning-summaries" as TabType, label: "Learning Summaries", icon: FileText }] : []),
+    ...(canViewAcademicAnalytics ? [{ id: "sapet" as TabType, label: "SAPET Analysis", icon: School }] : []),
   ];
 
   return (
