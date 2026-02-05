@@ -1171,6 +1171,127 @@ export async function registerRoutes(
     }
   });
 
+  // === SAPET ANALYTICS ===
+  app.get("/api/analytics/sapet", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const role = (req.user as any).role;
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+      return res.sendStatus(403);
+    }
+
+    try {
+      const allSessionsRaw = await storage.getLearningSupport();
+      const allAttendance = await storage.getAllAttendance();
+      const allClasses = await storage.getAllClasses();
+      const allUsers = await storage.getAllUsers();
+      
+      // Get teacher map
+      const teacherMap = new Map(allUsers.filter(u => u.role === "TEACHER").map(u => [u.id, u.name]));
+      
+      // Sessions per teacher
+      type TeacherSession = { teacherName: string; totalSessions: number; approvedSessions: number; pendingSessions: number; draftSessions: number };
+      const sessionsPerTeacher: Record<number, TeacherSession> = {};
+      allSessionsRaw.forEach(session => {
+        if (!sessionsPerTeacher[session.teacherId]) {
+          sessionsPerTeacher[session.teacherId] = {
+            teacherName: teacherMap.get(session.teacherId) || "Unknown",
+            totalSessions: 0,
+            approvedSessions: 0,
+            pendingSessions: 0,
+            draftSessions: 0
+          };
+        }
+        sessionsPerTeacher[session.teacherId].totalSessions++;
+        if (session.status === "APPROVED") sessionsPerTeacher[session.teacherId].approvedSessions++;
+        else if (session.status === "PENDING_APPROVAL") sessionsPerTeacher[session.teacherId].pendingSessions++;
+        else if (session.status === "DRAFT") sessionsPerTeacher[session.teacherId].draftSessions++;
+      });
+
+      // In-school vs Online sessions (based on teamsLink presence)
+      const inSchoolSessions = allSessionsRaw.filter(s => !s.teamsLink || s.teamsLink.trim() === "").length;
+      const onlineSessions = allSessionsRaw.filter(s => s.teamsLink && s.teamsLink.trim() !== "").length;
+
+      // Sessions by class
+      type ClassSession = { className: string; count: number };
+      const sessionsByClass: Record<number, ClassSession> = {};
+      allSessionsRaw.forEach(session => {
+        if (!sessionsByClass[session.classId]) {
+          const cls = allClasses.find(c => c.id === session.classId);
+          sessionsByClass[session.classId] = {
+            className: cls?.name || "Unknown",
+            count: 0
+          };
+        }
+        sessionsByClass[session.classId].count++;
+      });
+
+      // Attendance statistics
+      const totalAttendanceRecords = allAttendance.length;
+      const presentCount = allAttendance.filter(a => a.status === "PRESENT").length;
+      const absentCount = allAttendance.filter(a => a.status === "ABSENT").length;
+      const attendanceRate = totalAttendanceRecords > 0 ? (presentCount / totalAttendanceRecords * 100).toFixed(1) : 0;
+
+      // Attendance per session
+      type SessionAttendance = { sessionId: number; present: number; absent: number; total: number };
+      const attendancePerSession: Record<number, SessionAttendance> = {};
+      allAttendance.forEach(record => {
+        const sessionId = record.learningSupportId;
+        if (!attendancePerSession[sessionId]) {
+          attendancePerSession[sessionId] = { sessionId, present: 0, absent: 0, total: 0 };
+        }
+        attendancePerSession[sessionId].total++;
+        if (record.status === "PRESENT") attendancePerSession[sessionId].present++;
+        else attendancePerSession[sessionId].absent++;
+      });
+
+      // Sessions by day of week (based on sapetDay)
+      const sessionsByDay: Record<string, number> = { Saturday: 0, Sunday: 0, Other: 0 };
+      allSessionsRaw.forEach(session => {
+        if (session.sapetDay === "Saturday") sessionsByDay.Saturday++;
+        else if (session.sapetDay === "Sunday") sessionsByDay.Sunday++;
+        else if (session.sapetDay) sessionsByDay.Other++;
+      });
+
+      // Sessions by term and week
+      const sessionsByTermWeek: Record<string, number> = {};
+      allSessionsRaw.forEach(session => {
+        const key = `Term ${session.term} - Week ${session.week}`;
+        sessionsByTermWeek[key] = (sessionsByTermWeek[key] || 0) + 1;
+      });
+
+      // Status distribution
+      const statusDistribution = {
+        draft: allSessionsRaw.filter(s => s.status === "DRAFT").length,
+        pending: allSessionsRaw.filter(s => s.status === "PENDING_APPROVAL").length,
+        approved: allSessionsRaw.filter(s => s.status === "APPROVED").length,
+        rejected: allSessionsRaw.filter(s => s.status === "REJECTED").length
+      };
+
+      res.json({
+        summary: {
+          totalSessions: allSessionsRaw.length,
+          approvedSessions: statusDistribution.approved,
+          pendingSessions: statusDistribution.pending,
+          inSchoolSessions,
+          onlineSessions,
+          totalStudentsTracked: totalAttendanceRecords,
+          attendanceRate: parseFloat(attendanceRate as string) || 0,
+          presentCount,
+          absentCount
+        },
+        sessionsPerTeacher: Object.values(sessionsPerTeacher),
+        sessionsByClass: Object.values(sessionsByClass),
+        sessionsByDay,
+        sessionsByTermWeek,
+        statusDistribution,
+        attendancePerSession: Object.values(attendancePerSession)
+      });
+    } catch (error: any) {
+      console.error("SAPET analytics error:", error);
+      res.status(500).json({ message: "Failed to fetch SAPET analytics" });
+    }
+  });
+
   // === INACTIVE ACCOUNTS (Admin only) ===
   app.get("/api/inactive-accounts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

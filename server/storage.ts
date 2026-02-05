@@ -91,6 +91,7 @@ export interface IStorage {
   getSapetAttendance(learningSupportId: number): Promise<(SapetAttendance & { student: typeof students.$inferSelect })[]>;
   getStudentsByClass(classId: number): Promise<typeof students.$inferSelect[]>;
   saveSapetAttendance(learningSupportId: number, attendanceData: { studentId: number; status: "PRESENT" | "ABSENT" }[], markedById: number): Promise<SapetAttendance[]>;
+  getAllAttendance(): Promise<SapetAttendance[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -678,6 +679,10 @@ export class DatabaseStorage implements IStorage {
     }));
     
     return await db.insert(sapetAttendance).values(records).returning();
+  }
+
+  async getAllAttendance(): Promise<SapetAttendance[]> {
+    return await db.select().from(sapetAttendance);
   }
 }
 
