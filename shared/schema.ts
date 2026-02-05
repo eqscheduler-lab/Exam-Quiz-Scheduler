@@ -130,6 +130,8 @@ export const learningSummaries = pgTable("learning_summaries", {
   id: serial("id").primaryKey(),
   term: text("term", { enum: academicTerms }).notNull(),
   weekNumber: integer("week_number").notNull(),
+  weekStartDate: timestamp("week_start_date").notNull(),
+  weekEndDate: timestamp("week_end_date").notNull(),
   grade: text("grade").notNull(),
   classId: integer("class_id").references(() => classes.id).notNull(),
   subjectId: integer("subject_id").references(() => subjects.id).notNull(),
