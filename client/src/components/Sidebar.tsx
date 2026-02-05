@@ -66,6 +66,7 @@ export function Sidebar() {
 
   const isAdmin = user.role === "ADMIN";
   const isLeadership = ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"].includes(user.role);
+  const isSeniorLeadership = ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role);
   const isTeacher = user.role === "TEACHER" || user.role === "COORDINATOR" || user.role === "LEAD_TEACHER";
 
   return (
@@ -145,15 +146,17 @@ export function Sidebar() {
               System Analytics
             </Link>
             
-            <Link href="/teacher-overview" className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-              isActive("/teacher-overview") 
-                ? "bg-primary/10 text-primary shadow-sm" 
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )} data-testid="link-teacher-overview">
-              <Users className="w-4 h-4" />
-              Teacher Overview
-            </Link>
+            {isSeniorLeadership && (
+              <Link href="/teacher-overview" className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                isActive("/teacher-overview") 
+                  ? "bg-primary/10 text-primary shadow-sm" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )} data-testid="link-teacher-overview">
+                <Users className="w-4 h-4" />
+                Teacher Overview
+              </Link>
+            )}
             
           </>
         )}
