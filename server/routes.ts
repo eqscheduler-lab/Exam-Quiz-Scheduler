@@ -14,6 +14,49 @@ import { getSendGridClient } from "./sendgrid";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Helper function to get week dates based on term and week number
+// Academic year starts in September
+function getWeekDates(term: string, weekNumber: number): { weekStartDate: Date; weekEndDate: Date } {
+  // Assuming academic year starts in September
+  const currentYear = new Date().getFullYear();
+  let termStartMonth: number;
+  
+  switch (term) {
+    case "TERM_1":
+      termStartMonth = 8; // September (0-indexed)
+      break;
+    case "TERM_2":
+      termStartMonth = 0; // January
+      break;
+    case "TERM_3":
+      termStartMonth = 4; // May
+      break;
+    default:
+      termStartMonth = 8;
+  }
+  
+  // Calculate the year for the term
+  let year = currentYear;
+  if (term === "TERM_2" || term === "TERM_3") {
+    // If we're in the first half of the year, these terms are in the current year
+    // If we're in the second half, they're in the next year
+    const currentMonth = new Date().getMonth();
+    if (currentMonth >= 8) {
+      year = currentYear + 1;
+    }
+  }
+  
+  // Calculate week start date (Monday of that week)
+  const termStart = new Date(year, termStartMonth, 1);
+  const weekStart = addDays(termStart, (weekNumber - 1) * 7);
+  const weekEnd = addDays(weekStart, 6);
+  
+  return {
+    weekStartDate: weekStart,
+    weekEndDate: weekEnd
+  };
+}
+
 function parseCSV(content: string): Record<string, string>[] {
   const lines = content.trim().split(/\r?\n/);
   if (lines.length < 2) return [];
@@ -1662,12 +1705,17 @@ export async function registerRoutes(
         }
       }
       
+      // Calculate week dates based on term and week number
+      const { weekStartDate, weekEndDate } = getWeekDates(req.body.term, req.body.weekNumber);
+      
       // Convert sapetDate string to Date object if provided
       const supportData = {
         ...req.body,
         teacherId: user.id,
         status: "DRAFT",
-        sapetDate: req.body.sapetDate ? new Date(req.body.sapetDate) : null
+        sapetDate: req.body.sapetDate ? new Date(req.body.sapetDate) : null,
+        weekStartDate,
+        weekEndDate
       };
       
       const support = await storage.createLearningSupport(supportData);
