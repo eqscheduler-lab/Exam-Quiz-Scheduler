@@ -353,6 +353,83 @@ export async function registerRoutes(
     }
   });
 
+  // === DEPARTMENTS ===
+  app.get("/api/departments", async (req, res) => {
+    try {
+      const depts = await storage.getAllDepartments();
+      res.json(depts);
+    } catch (error: any) {
+      console.error("Get departments error:", error);
+      res.status(500).json({ message: "Failed to get departments" });
+    }
+  });
+
+  app.post("/api/departments", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const { name, displayName, isActive } = req.body;
+      if (!name || !displayName) {
+        return res.status(400).json({ message: "Name and display name are required" });
+      }
+      const dept = await storage.createDepartment({ 
+        name: name.toUpperCase().replace(/\s+/g, "_"), 
+        displayName,
+        isActive: isActive ?? true 
+      });
+      res.status(201).json(dept);
+    } catch (error: any) {
+      console.error("Create department error:", error);
+      if (error.message?.includes("unique constraint")) {
+        return res.status(400).json({ message: "A department with this name already exists" });
+      }
+      res.status(500).json({ message: "Failed to create department" });
+    }
+  });
+
+  app.patch("/api/departments/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const deptId = parseInt(req.params.id);
+      const { name, displayName, isActive } = req.body;
+      const updates: any = {};
+      if (name !== undefined) updates.name = name.toUpperCase().replace(/\s+/g, "_");
+      if (displayName !== undefined) updates.displayName = displayName;
+      if (isActive !== undefined) updates.isActive = isActive;
+      
+      const dept = await storage.updateDepartment(deptId, updates);
+      res.json(dept);
+    } catch (error: any) {
+      console.error("Update department error:", error);
+      if (error.message?.includes("unique constraint")) {
+        return res.status(400).json({ message: "A department with this name already exists" });
+      }
+      res.status(500).json({ message: "Failed to update department" });
+    }
+  });
+
+  app.delete("/api/departments/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const deptId = parseInt(req.params.id);
+      // Check if any users are assigned to this department
+      const allUsers = await storage.getAllUsers();
+      const dept = await storage.getDepartmentById(deptId);
+      if (dept) {
+        const usersInDept = allUsers.filter(u => u.department === dept.name);
+        if (usersInDept.length > 0) {
+          return res.status(400).json({ 
+            message: `Cannot delete department. ${usersInDept.length} staff member(s) are assigned to it. Reassign them first.` 
+          });
+        }
+      }
+      await storage.deleteDepartment(deptId);
+      res.sendStatus(200);
+    } catch (error: any) {
+      console.error("Delete department error:", error);
+      res.status(500).json({ message: "Failed to delete department" });
+    }
+  });
+
   // === USERS/STUDENTS ===
   app.post("/api/admin/users", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);

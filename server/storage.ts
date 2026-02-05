@@ -1,8 +1,9 @@
 import { db } from "./db";
 import {
-  users, subjects, students, examEvents, settings, classes, loginAudit, learningSummaries, learningSupport, sapetAttendance,
+  users, subjects, students, examEvents, settings, classes, loginAudit, learningSummaries, learningSupport, sapetAttendance, departmentsTable,
   type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class, type LoginAudit, type InsertLoginAudit,
-  type LearningSummary, type InsertLearningSummary, type LearningSupport, type InsertLearningSupport, type SapetAttendance, type InsertSapetAttendance
+  type LearningSummary, type InsertLearningSummary, type LearningSupport, type InsertLearningSupport, type SapetAttendance, type InsertSapetAttendance,
+  type Department, type InsertDepartment
 } from "@shared/schema";
 import { eq, and, count, gte, lte, desc, sql } from "drizzle-orm";
 
@@ -92,6 +93,13 @@ export interface IStorage {
   getStudentsByClass(classId: number): Promise<typeof students.$inferSelect[]>;
   saveSapetAttendance(learningSupportId: number, attendanceData: { studentId: number; status: "PRESENT" | "ABSENT" }[], markedById: number): Promise<SapetAttendance[]>;
   getAllAttendance(): Promise<SapetAttendance[]>;
+  
+  // Departments
+  getAllDepartments(): Promise<Department[]>;
+  getDepartmentById(id: number): Promise<Department | undefined>;
+  createDepartment(dept: InsertDepartment): Promise<Department>;
+  updateDepartment(id: number, dept: Partial<InsertDepartment>): Promise<Department>;
+  deleteDepartment(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -683,6 +691,30 @@ export class DatabaseStorage implements IStorage {
 
   async getAllAttendance(): Promise<SapetAttendance[]> {
     return await db.select().from(sapetAttendance);
+  }
+
+  // Departments
+  async getAllDepartments(): Promise<Department[]> {
+    return await db.select().from(departmentsTable).orderBy(departmentsTable.name);
+  }
+
+  async getDepartmentById(id: number): Promise<Department | undefined> {
+    const [dept] = await db.select().from(departmentsTable).where(eq(departmentsTable.id, id));
+    return dept;
+  }
+
+  async createDepartment(dept: InsertDepartment): Promise<Department> {
+    const [newDept] = await db.insert(departmentsTable).values(dept).returning();
+    return newDept;
+  }
+
+  async updateDepartment(id: number, dept: Partial<InsertDepartment>): Promise<Department> {
+    const [updated] = await db.update(departmentsTable).set(dept).where(eq(departmentsTable.id, id)).returning();
+    return updated;
+  }
+
+  async deleteDepartment(id: number): Promise<void> {
+    await db.delete(departmentsTable).where(eq(departmentsTable.id, id));
   }
 }
 
