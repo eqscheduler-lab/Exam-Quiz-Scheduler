@@ -1292,6 +1292,135 @@ export async function registerRoutes(
     }
   });
 
+  // === LEARNING SUMMARIES ANALYTICS (Admin/Principal/VP only) ===
+  app.get("/api/analytics/learning-summaries", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const role = (req.user as any).role;
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+      return res.sendStatus(403);
+    }
+
+    try {
+      const allSummaries = await storage.getLearningSummaries();
+      const allClasses = await storage.getAllClasses();
+      const allUsers = await storage.getAllUsers();
+      const allSubjects = await storage.getAllSubjects();
+      
+      // Get teacher and subject maps
+      const teacherMap = new Map(allUsers.filter(u => u.role === "TEACHER").map(u => [u.id, u.name]));
+      const classMap = new Map(allClasses.map(c => [c.id, c.name]));
+      const subjectMap = new Map(allSubjects.map(s => [s.id, s.name]));
+
+      // Summary statistics
+      const totalEntries = allSummaries.length;
+      const approvedEntries = allSummaries.filter(s => s.status === "APPROVED").length;
+      const pendingEntries = allSummaries.filter(s => s.status === "PENDING_APPROVAL").length;
+      const draftEntries = allSummaries.filter(s => s.status === "DRAFT").length;
+      const rejectedEntries = allSummaries.filter(s => s.status === "REJECTED").length;
+      
+      // Entries with quizzes scheduled
+      const entriesWithQuiz = allSummaries.filter(s => s.quizDay && s.quizDate).length;
+      const approvedWithQuiz = allSummaries.filter(s => s.status === "APPROVED" && s.quizDay && s.quizDate).length;
+
+      // Entries per teacher
+      const entriesPerTeacher: Record<number, { teacherId: number; teacherName: string; totalEntries: number; approvedEntries: number; pendingEntries: number; draftEntries: number }> = {};
+      allSummaries.forEach(summary => {
+        if (!entriesPerTeacher[summary.teacherId]) {
+          entriesPerTeacher[summary.teacherId] = {
+            teacherId: summary.teacherId,
+            teacherName: teacherMap.get(summary.teacherId) || "Unknown",
+            totalEntries: 0,
+            approvedEntries: 0,
+            pendingEntries: 0,
+            draftEntries: 0
+          };
+        }
+        entriesPerTeacher[summary.teacherId].totalEntries++;
+        if (summary.status === "APPROVED") entriesPerTeacher[summary.teacherId].approvedEntries++;
+        else if (summary.status === "PENDING_APPROVAL") entriesPerTeacher[summary.teacherId].pendingEntries++;
+        else if (summary.status === "DRAFT") entriesPerTeacher[summary.teacherId].draftEntries++;
+      });
+
+      // Entries per class
+      const entriesPerClass: Record<number, { classId: number; className: string; count: number }> = {};
+      allSummaries.forEach(summary => {
+        if (!entriesPerClass[summary.classId]) {
+          entriesPerClass[summary.classId] = {
+            classId: summary.classId,
+            className: classMap.get(summary.classId) || "Unknown",
+            count: 0
+          };
+        }
+        entriesPerClass[summary.classId].count++;
+      });
+
+      // Entries per subject
+      const entriesPerSubject: Record<number, { subjectId: number; subjectName: string; count: number }> = {};
+      allSummaries.forEach(summary => {
+        if (!entriesPerSubject[summary.subjectId]) {
+          entriesPerSubject[summary.subjectId] = {
+            subjectId: summary.subjectId,
+            subjectName: subjectMap.get(summary.subjectId) || "Unknown",
+            count: 0
+          };
+        }
+        entriesPerSubject[summary.subjectId].count++;
+      });
+
+      // Entries by term
+      const entriesByTerm: Record<string, number> = { TERM_1: 0, TERM_2: 0, TERM_3: 0 };
+      allSummaries.forEach(summary => {
+        entriesByTerm[summary.term] = (entriesByTerm[summary.term] || 0) + 1;
+      });
+
+      // Entries by term and week
+      const entriesByTermWeek: Record<string, number> = {};
+      allSummaries.forEach(summary => {
+        const key = `Term ${summary.term.replace('TERM_', '')} - Week ${summary.weekNumber}`;
+        entriesByTermWeek[key] = (entriesByTermWeek[key] || 0) + 1;
+      });
+
+      // Quizzes by day
+      const quizzesByDay: Record<string, number> = { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 };
+      allSummaries.forEach(summary => {
+        if (summary.quizDay) {
+          quizzesByDay[summary.quizDay] = (quizzesByDay[summary.quizDay] || 0) + 1;
+        }
+      });
+
+      // Status distribution
+      const statusDistribution = {
+        draft: draftEntries,
+        pending: pendingEntries,
+        approved: approvedEntries,
+        rejected: rejectedEntries
+      };
+
+      res.json({
+        summary: {
+          totalEntries,
+          approvedEntries,
+          pendingEntries,
+          draftEntries,
+          rejectedEntries,
+          entriesWithQuiz,
+          approvedWithQuiz,
+          approvalRate: totalEntries > 0 ? Math.round((approvedEntries / totalEntries) * 100) : 0
+        },
+        entriesPerTeacher: Object.values(entriesPerTeacher),
+        entriesPerClass: Object.values(entriesPerClass),
+        entriesPerSubject: Object.values(entriesPerSubject),
+        entriesByTerm,
+        entriesByTermWeek,
+        quizzesByDay,
+        statusDistribution
+      });
+    } catch (error: any) {
+      console.error("Learning summaries analytics error:", error);
+      res.status(500).json({ message: "Failed to fetch learning summaries analytics" });
+    }
+  });
+
   // === INACTIVE ACCOUNTS (Admin only) ===
   app.get("/api/inactive-accounts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);

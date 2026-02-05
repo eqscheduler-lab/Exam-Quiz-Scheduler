@@ -51,7 +51,27 @@ interface WeeklyUtilizationData {
   totalEntries: number;
 }
 
-type TabType = "overview" | "classes" | "subjects" | "teachers" | "trends" | "sapet";
+type TabType = "overview" | "classes" | "subjects" | "teachers" | "trends" | "learning-summaries" | "sapet";
+
+interface LearningSummariesAnalyticsData {
+  summary: {
+    totalEntries: number;
+    approvedEntries: number;
+    pendingEntries: number;
+    draftEntries: number;
+    rejectedEntries: number;
+    entriesWithQuiz: number;
+    approvedWithQuiz: number;
+    approvalRate: number;
+  };
+  entriesPerTeacher: { teacherName: string; totalEntries: number; approvedEntries: number; pendingEntries: number; draftEntries: number }[];
+  entriesPerClass: { className: string; count: number }[];
+  entriesPerSubject: { subjectName: string; count: number }[];
+  entriesByTerm: Record<string, number>;
+  entriesByTermWeek: Record<string, number>;
+  quizzesByDay: Record<string, number>;
+  statusDistribution: { draft: number; pending: number; approved: number; rejected: number };
+}
 
 interface SapetAnalyticsData {
   summary: {
@@ -95,6 +115,10 @@ export default function Analytics() {
 
   const { data: sapetAnalytics, isLoading: isLoadingSapet } = useQuery<SapetAnalyticsData>({
     queryKey: ["/api/analytics/sapet"],
+  });
+
+  const { data: learningSummariesAnalytics, isLoading: isLoadingLearningSummaries } = useQuery<LearningSummariesAnalyticsData>({
+    queryKey: ["/api/analytics/learning-summaries"],
   });
 
   const clearHistoryMutation = useMutation({
@@ -244,6 +268,7 @@ export default function Analytics() {
     { id: "subjects", label: "By Subject", icon: BookOpen },
     { id: "teachers", label: "By Teacher", icon: Users },
     { id: "trends", label: "Weekly Trends", icon: TrendingUp },
+    { id: "learning-summaries", label: "Learning Summaries", icon: FileText },
     { id: "sapet", label: "SAPET Analysis", icon: School },
   ];
 
@@ -798,6 +823,379 @@ export default function Analytics() {
                     </Table>
                   </CardContent>
                 </Card>
+              </div>
+            )}
+
+            {/* Learning Summaries Analysis Tab */}
+            {activeTab === "learning-summaries" && (
+              <div className="space-y-6">
+                {isLoadingLearningSummaries ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : learningSummariesAnalytics ? (
+                  <>
+                    {/* Learning Summaries Summary Cards */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <FileText className="w-8 h-8 text-primary mb-2" />
+                            <p className="text-2xl font-bold">{learningSummariesAnalytics.summary.totalEntries}</p>
+                            <p className="text-sm text-muted-foreground">Total Entries</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <UserCheck className="w-8 h-8 text-green-500 mb-2" />
+                            <p className="text-2xl font-bold">{learningSummariesAnalytics.summary.approvalRate}%</p>
+                            <p className="text-sm text-muted-foreground">Approval Rate</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <ClipboardList className="w-8 h-8 text-blue-500 mb-2" />
+                            <p className="text-2xl font-bold">{learningSummariesAnalytics.summary.entriesWithQuiz}</p>
+                            <p className="text-sm text-muted-foreground">With Quiz Scheduled</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="flex flex-col items-center">
+                            <Calendar className="w-8 h-8 text-amber-500 mb-2" />
+                            <p className="text-2xl font-bold">{learningSummariesAnalytics.summary.pendingEntries}</p>
+                            <p className="text-sm text-muted-foreground">Pending Approval</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Status Distribution & Term Distribution */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <ClipboardList className="w-5 h-5" />
+                            Entry Status Distribution
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={[
+                                    { name: "Draft", value: learningSummariesAnalytics.statusDistribution.draft, color: "#6b7280" },
+                                    { name: "Pending", value: learningSummariesAnalytics.statusDistribution.pending, color: "#f59e0b" },
+                                    { name: "Approved", value: learningSummariesAnalytics.statusDistribution.approved, color: "#22c55e" },
+                                    { name: "Rejected", value: learningSummariesAnalytics.statusDistribution.rejected, color: "#ef4444" }
+                                  ].filter(d => d.value > 0)}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={80}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                >
+                                  {[
+                                    { name: "Draft", value: learningSummariesAnalytics.statusDistribution.draft, color: "#6b7280" },
+                                    { name: "Pending", value: learningSummariesAnalytics.statusDistribution.pending, color: "#f59e0b" },
+                                    { name: "Approved", value: learningSummariesAnalytics.statusDistribution.approved, color: "#22c55e" },
+                                    { name: "Rejected", value: learningSummariesAnalytics.statusDistribution.rejected, color: "#ef4444" }
+                                  ].filter(d => d.value > 0).map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="flex justify-center flex-wrap gap-4 mt-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                              <span className="text-sm">Draft: {learningSummariesAnalytics.statusDistribution.draft}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                              <span className="text-sm">Pending: {learningSummariesAnalytics.statusDistribution.pending}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                              <span className="text-sm">Approved: {learningSummariesAnalytics.statusDistribution.approved}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                              <span className="text-sm">Rejected: {learningSummariesAnalytics.statusDistribution.rejected}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5" />
+                            Entries By Term
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={[
+                                { term: "Term 1", count: learningSummariesAnalytics.entriesByTerm.TERM_1 || 0 },
+                                { term: "Term 2", count: learningSummariesAnalytics.entriesByTerm.TERM_2 || 0 },
+                                { term: "Term 3", count: learningSummariesAnalytics.entriesByTerm.TERM_3 || 0 }
+                              ]}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="term" />
+                                <YAxis />
+                                <Tooltip />
+                                <Bar dataKey="count" name="Entries" fill="#6366f1" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Entries Per Teacher */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5" />
+                          Entries Per Teacher
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {learningSummariesAnalytics.entriesPerTeacher.length > 0 ? (
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={learningSummariesAnalytics.entriesPerTeacher.sort((a, b) => b.totalEntries - a.totalEntries)} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" />
+                                <YAxis dataKey="teacherName" type="category" width={150} tick={{ fontSize: 12 }} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="approvedEntries" name="Approved" stackId="a" fill="#22c55e" />
+                                <Bar dataKey="pendingEntries" name="Pending" stackId="a" fill="#f59e0b" />
+                                <Bar dataKey="draftEntries" name="Draft" stackId="a" fill="#6b7280" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <p className="text-center text-muted-foreground py-8">No teacher entry data available</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Entries By Subject & Class */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <BookOpen className="w-5 h-5" />
+                            Entries By Subject
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {learningSummariesAnalytics.entriesPerSubject.length > 0 ? (
+                            <div className="h-80">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={learningSummariesAnalytics.entriesPerSubject.sort((a, b) => b.count - a.count)}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="subjectName" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+                                  <YAxis />
+                                  <Tooltip />
+                                  <Bar dataKey="count" name="Entries" fill="#8b5cf6" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          ) : (
+                            <p className="text-center text-muted-foreground py-8">No subject data available</p>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <GraduationCap className="w-5 h-5" />
+                            Entries By Class
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {learningSummariesAnalytics.entriesPerClass.length > 0 ? (
+                            <div className="h-80">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={learningSummariesAnalytics.entriesPerClass.sort((a, b) => b.count - a.count)}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="className" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+                                  <YAxis />
+                                  <Tooltip />
+                                  <Bar dataKey="count" name="Entries" fill="#14b8a6" />
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          ) : (
+                            <p className="text-center text-muted-foreground py-8">No class data available</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Quizzes by Day */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Calendar className="w-5 h-5" />
+                          Quizzes Scheduled By Day
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-64">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={[
+                              { day: "Monday", count: learningSummariesAnalytics.quizzesByDay.Monday || 0 },
+                              { day: "Tuesday", count: learningSummariesAnalytics.quizzesByDay.Tuesday || 0 },
+                              { day: "Wednesday", count: learningSummariesAnalytics.quizzesByDay.Wednesday || 0 },
+                              { day: "Thursday", count: learningSummariesAnalytics.quizzesByDay.Thursday || 0 },
+                              { day: "Friday", count: learningSummariesAnalytics.quizzesByDay.Friday || 0 },
+                              { day: "Saturday", count: learningSummariesAnalytics.quizzesByDay.Saturday || 0 },
+                              { day: "Sunday", count: learningSummariesAnalytics.quizzesByDay.Sunday || 0 }
+                            ]}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="day" />
+                              <YAxis />
+                              <Tooltip />
+                              <Bar dataKey="count" name="Quizzes" fill="#f59e0b" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Teacher Entry Summary Table */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <ClipboardList className="w-5 h-5" />
+                          Teacher Entry Summary
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Teacher</TableHead>
+                              <TableHead className="text-center">Total Entries</TableHead>
+                              <TableHead className="text-center">Approved</TableHead>
+                              <TableHead className="text-center">Pending</TableHead>
+                              <TableHead className="text-center">Draft</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {learningSummariesAnalytics.entriesPerTeacher.length > 0 ? (
+                              learningSummariesAnalytics.entriesPerTeacher.sort((a, b) => b.totalEntries - a.totalEntries).map((teacher, idx) => (
+                                <TableRow key={idx}>
+                                  <TableCell className="font-medium">{teacher.teacherName}</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="secondary">{teacher.totalEntries}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge className="bg-green-500">{teacher.approvedEntries}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge className="bg-yellow-500">{teacher.pendingEntries}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline">{teacher.draftEntries}</Badge>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center text-muted-foreground py-4">
+                                  No teacher data available
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    {/* Action Plan Insights */}
+                    <Card className="border-primary">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-primary">
+                          <FileText className="w-5 h-5" />
+                          Action Plan Insights for Curriculum Coordinators
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Submission Coverage</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {learningSummariesAnalytics.summary.totalEntries === 0 
+                                ? "No learning summaries have been submitted yet. Remind teachers to submit their weekly learning summaries."
+                                : learningSummariesAnalytics.summary.approvalRate < 50
+                                  ? `Only ${learningSummariesAnalytics.summary.approvalRate}% of entries are approved. Review pending submissions to ensure timely feedback.`
+                                  : `Good progress! ${learningSummariesAnalytics.summary.approvalRate}% approval rate achieved.`
+                              }
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Quiz Planning</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {learningSummariesAnalytics.summary.entriesWithQuiz === 0
+                                ? "No quizzes have been scheduled yet. Encourage teachers to plan their assessments."
+                                : learningSummariesAnalytics.summary.approvedWithQuiz < learningSummariesAnalytics.summary.entriesWithQuiz
+                                  ? `${learningSummariesAnalytics.summary.entriesWithQuiz} quizzes planned, but only ${learningSummariesAnalytics.summary.approvedWithQuiz} are approved. Prioritize quiz-related approvals.`
+                                  : `${learningSummariesAnalytics.summary.approvedWithQuiz} quizzes are scheduled and approved.`
+                              }
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Pending Reviews</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {learningSummariesAnalytics.summary.pendingEntries === 0
+                                ? "No pending entries to review. Great job staying on top of approvals!"
+                                : learningSummariesAnalytics.summary.pendingEntries > 10
+                                  ? `${learningSummariesAnalytics.summary.pendingEntries} entries are pending approval. Consider allocating time for batch review.`
+                                  : `${learningSummariesAnalytics.summary.pendingEntries} entries pending review. Manageable workload.`
+                              }
+                            </p>
+                          </div>
+                          <div className="p-4 border rounded-lg">
+                            <h4 className="font-semibold mb-2">Teacher Engagement</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {learningSummariesAnalytics.entriesPerTeacher.length === 0
+                                ? "No teacher submission data available yet."
+                                : `${learningSummariesAnalytics.entriesPerTeacher.length} teachers are submitting learning summaries. ${
+                                    learningSummariesAnalytics.entriesPerTeacher.filter(t => t.totalEntries >= 3).length
+                                  } teachers have 3+ entries.`
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No learning summaries analytics data available</p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
 
