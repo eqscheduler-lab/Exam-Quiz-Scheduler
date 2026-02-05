@@ -601,26 +601,28 @@ export default function AcademicPlanningHub() {
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
                   <CardTitle>Learning Summaries</CardTitle>
                   <div className="flex gap-2">
-                    {isAdmin && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEmailDialog("summaries")}
-                        data-testid="button-email-summaries"
-                      >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Email Report
-                      </Button>
+                    {canApprove && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEmailDialog("summaries")}
+                          data-testid="button-email-summaries"
+                        >
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Report
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => exportPdf("summaries")}
+                          data-testid="button-export-summaries"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Export PDF
+                        </Button>
+                      </>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => exportPdf("summaries")}
-                      data-testid="button-export-summaries"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Export PDF
-                    </Button>
                     <Dialog open={summaryDialogOpen} onOpenChange={(open) => {
                       setSummaryDialogOpen(open);
                       if (!open) setEditingSummary(null);
@@ -885,26 +887,28 @@ export default function AcademicPlanningHub() {
                 <CardHeader className="flex flex-row items-center justify-between gap-4">
                   <CardTitle>Learning Support (SAPET Program)</CardTitle>
                   <div className="flex gap-2">
-                    {isAdmin && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEmailDialog("support")}
-                        data-testid="button-email-timetable"
-                      >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Email Timetable
-                      </Button>
+                    {canApprove && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEmailDialog("support")}
+                          data-testid="button-email-timetable"
+                        >
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Timetable
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => exportPdf("support")}
+                          data-testid="button-export-support"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Export PDF
+                        </Button>
+                      </>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => exportPdf("support")}
-                      data-testid="button-export-support"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Export PDF
-                    </Button>
                     <Dialog open={supportDialogOpen} onOpenChange={(open) => {
                       setSupportDialogOpen(open);
                       if (!open) {
