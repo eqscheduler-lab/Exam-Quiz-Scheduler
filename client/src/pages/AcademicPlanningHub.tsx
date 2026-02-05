@@ -751,14 +751,26 @@ export default function AcademicPlanningHub() {
                                   </>
                                 )}
                                 {isOwner && s.status === "APPROVED" && (
-                                  <Button 
-                                    size="icon" 
-                                    variant="ghost"
-                                    onClick={() => { setEditingSummary(s); setSummaryDialogOpen(true); }}
-                                    data-testid={`button-edit-approved-summary-${s.id}`}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
+                                  <>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      onClick={() => { setEditingSummary(s); setSummaryDialogOpen(true); }}
+                                      data-testid={`button-edit-approved-summary-${s.id}`}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost"
+                                      className="text-destructive"
+                                      onClick={() => deleteSummaryMutation.mutate(s.id)}
+                                      data-testid={`button-delete-approved-summary-${s.id}`}
+                                      title="Delete booking"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </>
                                 )}
                               </div>
                             </TableCell>
@@ -1206,6 +1218,18 @@ export default function AcademicPlanningHub() {
                                           data-testid={`button-edit-approved-support-${s.id}`}
                                         >
                                           <Edit className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      {isOwner && (
+                                        <Button 
+                                          size="icon" 
+                                          variant="ghost"
+                                          className="text-destructive"
+                                          onClick={() => deleteSupportMutation.mutate(s.id)}
+                                          data-testid={`button-delete-approved-support-${s.id}`}
+                                          title="Delete booking"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
                                         </Button>
                                       )}
                                       {(isOwner || isAdmin) && (
