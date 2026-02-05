@@ -1123,11 +1123,11 @@ export async function registerRoutes(
     }
   });
 
-  // === ANALYTICS (Admin, Principal, Vice Principal) ===
+  // === ANALYTICS (Admin, Principal, Vice Principal, Lead Teacher) ===
   app.get("/api/analytics", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const role = (req.user as any).role;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"].includes(role)) {
       return res.sendStatus(403);
     }
     try {
@@ -1143,7 +1143,7 @@ export async function registerRoutes(
   app.get("/api/analytics/teachers", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const role = (req.user as any).role;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"].includes(role)) {
       return res.sendStatus(403);
     }
     try {
@@ -1159,7 +1159,7 @@ export async function registerRoutes(
   app.get("/api/analytics/weekly-utilization", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const role = (req.user as any).role;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(role)) {
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"].includes(role)) {
       return res.sendStatus(403);
     }
     try {
@@ -1171,11 +1171,11 @@ export async function registerRoutes(
     }
   });
 
-  // === SAPET ANALYTICS (Admin/Principal/VP/Coordinator) ===
+  // === SAPET ANALYTICS (Admin/Principal/VP/Coordinator/Lead Teacher) ===
   app.get("/api/analytics/sapet", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const role = (req.user as any).role;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR"].includes(role)) {
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR", "LEAD_TEACHER"].includes(role)) {
       return res.sendStatus(403);
     }
 
@@ -1292,11 +1292,11 @@ export async function registerRoutes(
     }
   });
 
-  // === LEARNING SUMMARIES ANALYTICS (Admin/Principal/VP/Coordinator) ===
+  // === LEARNING SUMMARIES ANALYTICS (Admin/Principal/VP/Coordinator/Lead Teacher) ===
   app.get("/api/analytics/learning-summaries", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const role = (req.user as any).role;
-    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR"].includes(role)) {
+    if (!["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR", "LEAD_TEACHER"].includes(role)) {
       return res.sendStatus(403);
     }
 
@@ -1885,7 +1885,7 @@ export async function registerRoutes(
       }
       
       // Teachers can only edit their own drafts
-      if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
         if (existing.teacherId !== user.id) {
           return res.status(403).json({ message: "You can only edit your own entries" });
         }
@@ -1970,7 +1970,7 @@ export async function registerRoutes(
         }
       }
       
-      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
         updateData.status = "PENDING_APPROVAL";
       }
       
@@ -2027,13 +2027,13 @@ export async function registerRoutes(
     }
   });
 
-  // Approve learning summary (Admin/VP only)
+  // Approve learning summary (Admin/VP/Lead Teacher only)
   app.post("/api/learning-summaries/:id/approve", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     const user = req.user as any;
-    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
-      return res.status(403).json({ message: "Only Admin or Vice Principal can approve" });
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
+      return res.status(403).json({ message: "Only Admin, Vice Principal, or Lead Teacher can approve" });
     }
     
     try {
@@ -2086,8 +2086,8 @@ export async function registerRoutes(
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     const user = req.user as any;
-    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
-      return res.status(403).json({ message: "Only Admin or Vice Principal can reject" });
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
+      return res.status(403).json({ message: "Only Admin, Vice Principal, or Lead Teacher can reject" });
     }
     
     try {
@@ -2290,7 +2290,7 @@ export async function registerRoutes(
       }
       
       // Teachers can only edit their own entries
-      if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
         if (existing.teacherId !== user.id) {
           return res.status(403).json({ message: "You can only edit your own entries" });
         }
@@ -2306,7 +2306,7 @@ export async function registerRoutes(
       
       // If editing an approved entry, revert to pending approval
       let updateData = { ...req.body };
-      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
+      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
         updateData.status = "PENDING_APPROVAL";
       }
       
@@ -2412,13 +2412,13 @@ export async function registerRoutes(
     }
   });
 
-  // Approve learning support (Admin/VP only)
+  // Approve learning support (Admin/VP/Lead Teacher only)
   app.post("/api/learning-support/:id/approve", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     const user = req.user as any;
-    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
-      return res.status(403).json({ message: "Only Admin or Vice Principal can approve" });
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
+      return res.status(403).json({ message: "Only Admin, Vice Principal, or Lead Teacher can approve" });
     }
     
     try {
@@ -2441,13 +2441,13 @@ export async function registerRoutes(
     }
   });
 
-  // Reject learning support (Admin/VP only)
+  // Reject learning support (Admin/VP/Lead Teacher only)
   app.post("/api/learning-support/:id/reject", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     const user = req.user as any;
-    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
-      return res.status(403).json({ message: "Only Admin or Vice Principal can reject" });
+    if (user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
+      return res.status(403).json({ message: "Only Admin, Vice Principal, or Lead Teacher can reject" });
     }
     
     try {
@@ -2762,8 +2762,8 @@ export async function registerRoutes(
       }
       
       // Teachers can only view their own sessions' attendance
-      // Admin, Principal, Vice Principal can view all
-      const canViewAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL";
+      // Admin, Principal, Vice Principal, Lead Teacher can view all
+      const canViewAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL" || user.role === "LEAD_TEACHER";
       if (support.teacherId !== user.id && !canViewAll) {
         return res.status(403).json({ message: "You can only view attendance for your own sessions" });
       }
@@ -2789,8 +2789,8 @@ export async function registerRoutes(
       }
       
       // Teachers can only view students for their own sessions
-      // Admin, Principal, Vice Principal can view all
-      const canViewAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL";
+      // Admin, Principal, Vice Principal, Lead Teacher can view all
+      const canViewAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL" || user.role === "LEAD_TEACHER";
       if (support.teacherId !== user.id && !canViewAll) {
         return res.status(403).json({ message: "You can only view students for your own sessions" });
       }
@@ -2821,8 +2821,8 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Learning support session not found" });
       }
       
-      // Only the teacher who created the session or admin/principal/vice principal can mark attendance
-      const canMarkAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL";
+      // Only the teacher who created the session or admin/principal/vice principal/lead teacher can mark attendance
+      const canMarkAll = user.role === "ADMIN" || user.role === "PRINCIPAL" || user.role === "VICE_PRINCIPAL" || user.role === "LEAD_TEACHER";
       if (support.teacherId !== user.id && !canMarkAll) {
         return res.status(403).json({ message: "Only the session teacher or administrators can mark attendance" });
       }
