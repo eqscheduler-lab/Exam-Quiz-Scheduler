@@ -390,8 +390,8 @@ export async function registerRoutes(
     if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
     try {
       const userId = parseInt(req.params.id);
-      const { name, email, role, isActive } = req.body;
-      await storage.updateUser(userId, { name, email, role, isActive });
+      const { name, email, role, isActive, department } = req.body;
+      await storage.updateUser(userId, { name, email, role, isActive, department });
       res.sendStatus(200);
     } catch (error: any) {
       console.error("Update user error:", error);
