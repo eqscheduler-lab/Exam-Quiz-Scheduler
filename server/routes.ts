@@ -1420,10 +1420,15 @@ export async function registerRoutes(
         data.quizDate = new Date(data.quizDate);
       }
       
+      // Calculate week dates based on term and week number
+      const { weekStartDate, weekEndDate } = getWeekDates(data.term, data.weekNumber);
+      
       const summary = await storage.createLearningSummary({
         ...data,
         teacherId: user.id,
-        status: "DRAFT"
+        status: "DRAFT",
+        weekStartDate,
+        weekEndDate
       });
       res.status(201).json(summary);
     } catch (err) {
