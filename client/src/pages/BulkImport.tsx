@@ -213,7 +213,7 @@ export default function BulkImport() {
                 </CardTitle>
                 <CardDescription>
                   Import teachers, coordinators, and administrators. Required fields: name, username, email, role.
-                  Valid roles: TEACHER, ADMIN, COORDINATOR, PRINCIPAL, VICE_PRINCIPAL.
+                  Valid roles: TEACHER, ADMIN, COORDINATOR, PRINCIPAL, VICE_PRINCIPAL, LEAD_TEACHER.
                   Default password will be "Staff123" for all imported users.
                 </CardDescription>
               </CardHeader>

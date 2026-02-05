@@ -83,13 +83,13 @@ function Router() {
         <ProtectedRoute component={Documentation} allowedRoles={["ADMIN"]} />
       </Route>
       <Route path="/analytics">
-        <ProtectedRoute component={Analytics} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"]} />
+        <ProtectedRoute component={Analytics} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"]} />
       </Route>
       <Route path="/teacher-overview">
-        <ProtectedRoute component={TeacherOverview} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"]} />
+        <ProtectedRoute component={TeacherOverview} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"]} />
       </Route>
       <Route path="/inactive-accounts">
-        <ProtectedRoute component={InactiveAccounts} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"]} />
+        <ProtectedRoute component={InactiveAccounts} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"]} />
       </Route>
       <Route component={NotFound} />
     </Switch>

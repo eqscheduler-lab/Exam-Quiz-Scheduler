@@ -43,7 +43,11 @@ Preferred communication style: Simple, everyday language.
    - Homework: Unlimited per day
 3. **Role Permissions**:
    - Teachers: Create/manage their own exams, view schedules, cancel own bookings
-   - Admins: Full access including user/subject/student management, bulk import
+   - Lead Teachers: All Teacher permissions PLUS Vice Principal permissions (approve/reject entries, view analytics, manage all teachers' entries, view attendance for all sessions)
+   - Coordinators: View schedules, access learning summaries and SAPET analytics
+   - Vice Principals: Approve/reject learning summaries and SAPET sessions, view all analytics, manage teacher entries
+   - Principals: Same as Vice Principal with full oversight
+   - Admins: Full access including user/subject/student management, bulk import, factory reset
 
 ### PDF Export Feature
 The Schedule page (`/schedule`) offers two export options:

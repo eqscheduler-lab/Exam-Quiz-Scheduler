@@ -262,7 +262,7 @@ export default function Analytics() {
     '#14b8a6', '#f97316', '#d946ef', '#06b6d4', '#ef4444'
   ];
 
-  const canViewAcademicAnalytics = user && ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR"].includes(user.role);
+  const canViewAcademicAnalytics = user && ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "COORDINATOR", "LEAD_TEACHER"].includes(user.role);
 
   const tabs: { id: TabType; label: string; icon: any }[] = [
     { id: "overview", label: "Overview", icon: BarChart3 },

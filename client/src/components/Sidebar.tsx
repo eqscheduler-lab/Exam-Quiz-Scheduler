@@ -64,8 +64,8 @@ export function Sidebar() {
   const isActive = (path: string) => location === path;
 
   const isAdmin = user.role === "ADMIN";
-  const isLeadership = ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL"].includes(user.role);
-  const isTeacher = user.role === "TEACHER" || user.role === "COORDINATOR";
+  const isLeadership = ["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"].includes(user.role);
+  const isTeacher = user.role === "TEACHER" || user.role === "COORDINATOR" || user.role === "LEAD_TEACHER";
 
   return (
     <div className="h-screen w-64 bg-card border-r border-border flex flex-col fixed left-0 top-0 z-20 shadow-xl shadow-black/5">

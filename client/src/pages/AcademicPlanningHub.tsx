@@ -180,7 +180,7 @@ export default function AcademicPlanningHub() {
   const [attendanceSession, setAttendanceSession] = useState<LearningSupport | null>(null);
   const [attendanceData, setAttendanceData] = useState<Record<number, "PRESENT" | "ABSENT">>({});
 
-  const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL";
+  const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL" || user?.role === "LEAD_TEACHER";
   const isAdmin = user?.role === "ADMIN";
 
   const { data: summaries = [], isLoading: summariesLoading } = useQuery<LearningSummary[]>({
