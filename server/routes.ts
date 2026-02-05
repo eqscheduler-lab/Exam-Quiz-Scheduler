@@ -1441,18 +1441,50 @@ export async function registerRoutes(
         });
       }
       
-      // Check for quiz scheduling conflicts - same teacher, same quiz day/time
-      if (data.quizDay && data.quizTime) {
-        const quizConflict = existingSummaries.find(s => 
-          s.teacherId === user.id &&
-          s.quizDay === data.quizDay && 
-          s.quizTime === data.quizTime
-        );
+      // Check for quiz scheduling conflicts aligned with master schedule rules
+      if (data.quizDate) {
+        const quizDateObj = new Date(data.quizDate);
         
-        if (quizConflict) {
+        // Rule 1: Each class can only have ONE quiz per day
+        const classQuizConflict = existingSummaries.find(s => {
+          if (s.classId !== data.classId || !s.quizDate) return false;
+          const existingQuizDate = new Date(s.quizDate);
+          return existingQuizDate.toDateString() === quizDateObj.toDateString();
+        });
+        
+        if (classQuizConflict) {
           return res.status(400).json({ 
-            message: `You already have a quiz scheduled for ${data.quizDay} Period ${data.quizTime} in Week ${data.weekNumber}` 
+            message: `This class already has a quiz scheduled for ${quizDateObj.toLocaleDateString()}. Each class can only have one quiz per day.` 
           });
+        }
+        
+        // Rule 2: Same teacher cannot book a second quiz for the same class on the same day
+        const teacherClassConflict = existingSummaries.find(s => {
+          if (s.teacherId !== user.id || s.classId !== data.classId || !s.quizDate) return false;
+          const existingQuizDate = new Date(s.quizDate);
+          return existingQuizDate.toDateString() === quizDateObj.toDateString();
+        });
+        
+        if (teacherClassConflict) {
+          return res.status(400).json({ 
+            message: `You already have a quiz for this class on ${quizDateObj.toLocaleDateString()}.` 
+          });
+        }
+        
+        // Rule 3: Same teacher cannot have two quizzes at the same time slot
+        if (data.quizTime) {
+          const teacherTimeConflict = existingSummaries.find(s => {
+            if (s.teacherId !== user.id || !s.quizDate || !s.quizTime) return false;
+            const existingQuizDate = new Date(s.quizDate);
+            return existingQuizDate.toDateString() === quizDateObj.toDateString() && 
+                   s.quizTime === data.quizTime;
+          });
+          
+          if (teacherTimeConflict) {
+            return res.status(400).json({ 
+              message: `You already have a quiz scheduled for Period ${data.quizTime} on ${quizDateObj.toLocaleDateString()}` 
+            });
+          }
         }
       }
       
@@ -1500,7 +1532,9 @@ export async function registerRoutes(
       // Check for conflicts when updating class/subject or quiz scheduling
       const targetClassId = updateData.classId || existing.classId;
       const targetSubjectId = updateData.subjectId || existing.subjectId;
-      const targetQuizDay = updateData.quizDay !== undefined ? updateData.quizDay : existing.quizDay;
+      const targetQuizDate = updateData.quizDate !== undefined 
+        ? (updateData.quizDate ? new Date(updateData.quizDate) : null)
+        : existing.quizDate;
       const targetQuizTime = updateData.quizTime !== undefined ? updateData.quizTime : existing.quizTime;
       
       const existingSummaries = await storage.getLearningSummaries({
@@ -1521,19 +1555,48 @@ export async function registerRoutes(
         });
       }
       
-      // Check for quiz scheduling conflicts (excluding current entry)
-      if (targetQuizDay && targetQuizTime) {
-        const quizConflict = existingSummaries.find(s => 
-          s.id !== id &&
-          s.teacherId === existing.teacherId &&
-          s.quizDay === targetQuizDay && 
-          s.quizTime === targetQuizTime
-        );
+      // Check for quiz scheduling conflicts aligned with master schedule rules
+      if (targetQuizDate) {
+        // Rule 1: Each class can only have ONE quiz per day
+        const classQuizConflict = existingSummaries.find(s => {
+          if (s.id === id || s.classId !== targetClassId || !s.quizDate) return false;
+          const existingQuizDate = new Date(s.quizDate);
+          return existingQuizDate.toDateString() === targetQuizDate.toDateString();
+        });
         
-        if (quizConflict) {
+        if (classQuizConflict) {
           return res.status(400).json({ 
-            message: `You already have a quiz scheduled for ${targetQuizDay} Period ${targetQuizTime} in Week ${existing.weekNumber}` 
+            message: `This class already has a quiz scheduled for ${targetQuizDate.toLocaleDateString()}. Each class can only have one quiz per day.` 
           });
+        }
+        
+        // Rule 2: Same teacher cannot book a second quiz for the same class on the same day
+        const teacherClassConflict = existingSummaries.find(s => {
+          if (s.id === id || s.teacherId !== existing.teacherId || s.classId !== targetClassId || !s.quizDate) return false;
+          const existingQuizDate = new Date(s.quizDate);
+          return existingQuizDate.toDateString() === targetQuizDate.toDateString();
+        });
+        
+        if (teacherClassConflict) {
+          return res.status(400).json({ 
+            message: `You already have a quiz for this class on ${targetQuizDate.toLocaleDateString()}.` 
+          });
+        }
+        
+        // Rule 3: Same teacher cannot have two quizzes at the same time slot
+        if (targetQuizTime) {
+          const teacherTimeConflict = existingSummaries.find(s => {
+            if (s.id === id || s.teacherId !== existing.teacherId || !s.quizDate || !s.quizTime) return false;
+            const existingQuizDate = new Date(s.quizDate);
+            return existingQuizDate.toDateString() === targetQuizDate.toDateString() && 
+                   s.quizTime === targetQuizTime;
+          });
+          
+          if (teacherTimeConflict) {
+            return res.status(400).json({ 
+              message: `You already have a quiz scheduled for Period ${targetQuizTime} on ${targetQuizDate.toLocaleDateString()}` 
+            });
+          }
         }
       }
       
