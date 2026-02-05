@@ -1241,6 +1241,126 @@ export default function AcademicPlanningHub() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* All Entries Table - Shows Draft, Pending, and Approved entries */}
+                  <div className="mt-6 pt-6 border-t">
+                    <h3 className="font-semibold mb-4">All Entries</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Grade</TableHead>
+                          <TableHead>Class</TableHead>
+                          <TableHead>Subject</TableHead>
+                          <TableHead>Session Type</TableHead>
+                          <TableHead>Day/Time</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {support.map(s => {
+                          const isOwner = user?.id === s.teacherId;
+                          return (
+                            <TableRow key={s.id} data-testid={`row-support-${s.id}`}>
+                              <TableCell>G{s.grade}</TableCell>
+                              <TableCell>{s.class.name}</TableCell>
+                              <TableCell>{s.subject.code}</TableCell>
+                              <TableCell>
+                                {s.sessionType === "online" ? "Online" : s.sessionType === "in_school" ? "In School" : "-"}
+                              </TableCell>
+                              <TableCell>
+                                {s.sapetDay ? `${s.sapetDay}${s.sapetTime ? ` ${s.sapetTime}` : ""}` : "-"}
+                              </TableCell>
+                              <TableCell>
+                                {getStatusBadge(s.status)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1">
+                                  {isOwner && s.status === "DRAFT" && (
+                                    <>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost"
+                                        onClick={() => { setEditingSupport(s); setSupportSessionType(s.sessionType || ""); setSapetDate(s.sapetDate ? format(new Date(s.sapetDate), "yyyy-MM-dd") : ""); setSupportDialogOpen(true); }}
+                                        data-testid={`button-edit-support-${s.id}`}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost"
+                                        onClick={() => submitSupportMutation.mutate(s.id)}
+                                        data-testid={`button-submit-support-${s.id}`}
+                                      >
+                                        <Send className="h-4 w-4" />
+                                      </Button>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost"
+                                        onClick={() => deleteSupportMutation.mutate(s.id)}
+                                        data-testid={`button-delete-support-${s.id}`}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {isOwner && s.status === "APPROVED" && (
+                                    <>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost"
+                                        onClick={() => { setEditingSupport(s); setSupportSessionType(s.sessionType || ""); setSapetDate(s.sapetDate ? format(new Date(s.sapetDate), "yyyy-MM-dd") : ""); setSupportDialogOpen(true); }}
+                                        data-testid={`button-edit-approved-support-${s.id}`}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={() => openAttendanceDialog(s)}
+                                        data-testid={`button-attendance-support-${s.id}`}
+                                      >
+                                        <ClipboardCheck className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                  {canApprove && s.status === "PENDING_APPROVAL" && (
+                                    <>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost"
+                                        className="text-green-600"
+                                        onClick={() => { setApprovalAction({ type: "support", id: s.id, action: "approve" }); setApprovalDialogOpen(true); }}
+                                        data-testid={`button-approve-support-${s.id}`}
+                                      >
+                                        <CheckCircle className="h-4 w-4" />
+                                      </Button>
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost"
+                                        className="text-red-600"
+                                        onClick={() => { setApprovalAction({ type: "support", id: s.id, action: "reject" }); setApprovalDialogOpen(true); }}
+                                        data-testid={`button-reject-support-${s.id}`}
+                                      >
+                                        <XCircle className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {support.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                              No entries yet. Click "Add Entry" to create one.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
