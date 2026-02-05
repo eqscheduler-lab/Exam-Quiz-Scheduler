@@ -1370,8 +1370,15 @@ export async function registerRoutes(
     
     try {
       const user = req.user as any;
+      const data = { ...req.body };
+      
+      // Convert quizDate string to Date object if present
+      if (data.quizDate && typeof data.quizDate === 'string') {
+        data.quizDate = new Date(data.quizDate);
+      }
+      
       const summary = await storage.createLearningSummary({
-        ...req.body,
+        ...data,
         teacherId: user.id,
         status: "DRAFT"
       });
@@ -1403,6 +1410,12 @@ export async function registerRoutes(
       
       // If editing an approved entry, revert to pending approval
       let updateData = { ...req.body };
+      
+      // Convert quizDate string to Date object if present
+      if (updateData.quizDate && typeof updateData.quizDate === 'string') {
+        updateData.quizDate = new Date(updateData.quizDate);
+      }
+      
       if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
         updateData.status = "PENDING_APPROVAL";
       }
