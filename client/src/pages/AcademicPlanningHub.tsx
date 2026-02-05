@@ -49,8 +49,10 @@ import {
   Loader2,
   CheckCircle,
   Mail,
-  XCircle
+  XCircle,
+  ClipboardCheck
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Term = "TERM_1" | "TERM_2" | "TERM_3";
 type Status = "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
@@ -88,6 +90,7 @@ interface LearningSupport {
   teacherId: number;
   sessionType: string | null;
   teamsLink: string | null;
+  location: string | null;
   sapetDay: string | null;
   sapetDate: string | null;
   sapetTime: string | null;
@@ -111,6 +114,21 @@ interface Subject {
   id: number;
   name: string;
   code: string;
+}
+
+interface Student {
+  id: number;
+  name: string;
+  studentId: string;
+  classId: number;
+}
+
+interface AttendanceRecord {
+  id: number;
+  learningSupportId: number;
+  studentId: number;
+  status: "PRESENT" | "ABSENT";
+  student: Student;
 }
 
 const TERMS: { value: Term; label: string }[] = [
@@ -158,6 +176,9 @@ export default function AcademicPlanningHub() {
   const [supportSessionType, setSupportSessionType] = useState<string>("");
   const [sapetDate, setSapetDate] = useState<string>("");
   const [sapetDateError, setSapetDateError] = useState<string>("");
+  const [attendanceDialogOpen, setAttendanceDialogOpen] = useState(false);
+  const [attendanceSession, setAttendanceSession] = useState<LearningSupport | null>(null);
+  const [attendanceData, setAttendanceData] = useState<Record<number, "PRESENT" | "ABSENT">>({});
 
   const canApprove = user?.role === "ADMIN" || user?.role === "VICE_PRINCIPAL" || user?.role === "PRINCIPAL";
   const isAdmin = user?.role === "ADMIN";
@@ -176,6 +197,28 @@ export default function AcademicPlanningHub() {
 
   const { data: subjects = [] } = useQuery<Subject[]>({
     queryKey: ["/api/subjects"]
+  });
+
+  const { data: attendanceStudents = [], isLoading: studentsLoading } = useQuery<Student[]>({
+    queryKey: ["/api/learning-support", attendanceSession?.id, "students"],
+    queryFn: async () => {
+      if (!attendanceSession) return [];
+      const res = await fetch(`/api/learning-support/${attendanceSession.id}/students`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch students");
+      return res.json();
+    },
+    enabled: !!attendanceSession
+  });
+
+  const { data: existingAttendance = [], isLoading: attendanceLoading } = useQuery<AttendanceRecord[]>({
+    queryKey: ["/api/learning-support", attendanceSession?.id, "attendance"],
+    queryFn: async () => {
+      if (!attendanceSession) return [];
+      const res = await fetch(`/api/learning-support/${attendanceSession.id}/attendance`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch attendance");
+      return res.json();
+    },
+    enabled: !!attendanceSession
   });
 
   const invalidateSummaries = () => {
@@ -276,6 +319,21 @@ export default function AcademicPlanningHub() {
     }
   });
 
+  const saveAttendanceMutation = useMutation({
+    mutationFn: ({ sessionId, attendance }: { sessionId: number; attendance: { studentId: number; status: "PRESENT" | "ABSENT" }[] }) => 
+      apiRequest("POST", `/api/learning-support/${sessionId}/attendance`, { attendance }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/learning-support", attendanceSession?.id, "attendance"] });
+      toast({ title: "Attendance saved successfully" });
+      setAttendanceDialogOpen(false);
+      setAttendanceSession(null);
+      setAttendanceData({});
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to save attendance", description: err.message, variant: "destructive" });
+    }
+  });
+
   const submitSupportMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/learning-support/${id}/submit`),
     onSuccess: () => {
@@ -345,6 +403,42 @@ export default function AcademicPlanningHub() {
       createSummaryMutation.mutate(data);
     }
   };
+
+  const openAttendanceDialog = (session: LearningSupport) => {
+    setAttendanceSession(session);
+    setAttendanceData({});
+    setAttendanceDialogOpen(true);
+  };
+
+  const handleSaveAttendance = () => {
+    if (!attendanceSession) return;
+    
+    const attendance = attendanceStudents.map(student => ({
+      studentId: student.id,
+      status: attendanceData[student.id] || "ABSENT" as const
+    }));
+    
+    saveAttendanceMutation.mutate({
+      sessionId: attendanceSession.id,
+      attendance
+    });
+  };
+
+  // Initialize attendance data when existing records are loaded
+  const initializeAttendanceFromExisting = () => {
+    if (existingAttendance.length > 0) {
+      const data: Record<number, "PRESENT" | "ABSENT"> = {};
+      existingAttendance.forEach(record => {
+        data[record.studentId] = record.status;
+      });
+      setAttendanceData(data);
+    }
+  };
+
+  // Effect to initialize attendance when dialog opens with existing records
+  if (attendanceSession && existingAttendance.length > 0 && Object.keys(attendanceData).length === 0) {
+    initializeAttendanceFromExisting();
+  }
 
   const handleSupportSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1077,6 +1171,18 @@ export default function AcademicPlanningHub() {
                                               Teams Link
                                             </a>
                                           )}
+                                          {(user?.id === session.teacherId || user?.role === "ADMIN") && (
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="mt-2 w-full text-xs"
+                                              onClick={() => openAttendanceDialog(session)}
+                                              data-testid={`button-attendance-${session.id}`}
+                                            >
+                                              <ClipboardCheck className="w-3 h-3 mr-1" />
+                                              Attendance
+                                            </Button>
+                                          )}
                                         </div>
                                       </div>
                                     );
@@ -1103,6 +1209,18 @@ export default function AcademicPlanningHub() {
                                         <a href={session.teamsLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
                                           <ExternalLink className="w-3 h-3" /> Teams
                                         </a>
+                                      )}
+                                      {(user?.id === session.teacherId || user?.role === "ADMIN") && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-xs ml-auto"
+                                          onClick={() => openAttendanceDialog(session)}
+                                          data-testid={`button-attendance-unscheduled-${session.id}`}
+                                        >
+                                          <ClipboardCheck className="w-3 h-3 mr-1" />
+                                          Attendance
+                                        </Button>
                                       )}
                                     </div>
                                   ))}
@@ -1348,6 +1466,159 @@ export default function AcademicPlanningHub() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={attendanceDialogOpen} onOpenChange={(open) => {
+        setAttendanceDialogOpen(open);
+        if (!open) {
+          setAttendanceSession(null);
+          setAttendanceData({});
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="w-5 h-5" />
+              Mark Attendance
+            </DialogTitle>
+          </DialogHeader>
+          
+          {attendanceSession && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-muted-foreground">Class:</span> {attendanceSession.class.name}</div>
+                  <div><span className="text-muted-foreground">Subject:</span> {attendanceSession.subject.code} - {attendanceSession.subject.name}</div>
+                  <div><span className="text-muted-foreground">Day:</span> {attendanceSession.sapetDay || "Not scheduled"}</div>
+                  <div><span className="text-muted-foreground">Time:</span> {attendanceSession.sapetTime || "Not set"}</div>
+                </div>
+              </div>
+
+              {(studentsLoading || attendanceLoading) ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="ml-2">Loading students...</span>
+                </div>
+              ) : attendanceStudents.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No students found in this class. Please add students to the class first.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <Label className="text-base font-medium">Student List ({attendanceStudents.length} students)</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const allPresent: Record<number, "PRESENT" | "ABSENT"> = {};
+                          attendanceStudents.forEach(s => allPresent[s.id] = "PRESENT");
+                          setAttendanceData(allPresent);
+                        }}
+                        data-testid="button-mark-all-present"
+                      >
+                        <Check className="w-3 h-3 mr-1" />
+                        Mark All Present
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const allAbsent: Record<number, "PRESENT" | "ABSENT"> = {};
+                          attendanceStudents.forEach(s => allAbsent[s.id] = "ABSENT");
+                          setAttendanceData(allAbsent);
+                        }}
+                        data-testid="button-mark-all-absent"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Mark All Absent
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[60px]">#</TableHead>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="text-center w-[120px]">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {attendanceStudents.map((student, index) => (
+                        <TableRow key={student.id} data-testid={`row-student-${student.id}`}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{student.studentId}</TableCell>
+                          <TableCell>{student.name}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Checkbox
+                                id={`attendance-${student.id}`}
+                                checked={attendanceData[student.id] === "PRESENT"}
+                                onCheckedChange={(checked) => {
+                                  setAttendanceData(prev => ({
+                                    ...prev,
+                                    [student.id]: checked ? "PRESENT" : "ABSENT"
+                                  }));
+                                }}
+                                data-testid={`checkbox-attendance-${student.id}`}
+                              />
+                              <Label 
+                                htmlFor={`attendance-${student.id}`}
+                                className={attendanceData[student.id] === "PRESENT" ? "text-green-600" : "text-muted-foreground"}
+                              >
+                                {attendanceData[student.id] === "PRESENT" ? "Present" : "Absent"}
+                              </Label>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  <div className="flex justify-between items-center pt-4 border-t mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Present: {Object.values(attendanceData).filter(s => s === "PRESENT").length} | 
+                      Absent: {attendanceStudents.length - Object.values(attendanceData).filter(s => s === "PRESENT").length}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setAttendanceDialogOpen(false);
+                          setAttendanceSession(null);
+                          setAttendanceData({});
+                        }}
+                        data-testid="button-cancel-attendance"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleSaveAttendance}
+                        disabled={saveAttendanceMutation.isPending}
+                        data-testid="button-save-attendance"
+                      >
+                        {saveAttendanceMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 mr-2" />
+                            Save Attendance
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
