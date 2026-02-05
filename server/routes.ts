@@ -1423,6 +1423,39 @@ export async function registerRoutes(
       // Calculate week dates based on term and week number
       const { weekStartDate, weekEndDate } = getWeekDates(data.term, data.weekNumber);
       
+      // Check for conflicts - same class, same term, same week
+      const existingSummaries = await storage.getLearningSummaries({
+        term: data.term,
+        weekNumber: data.weekNumber
+      });
+      
+      // Check if there's already a summary for this class/subject combination in this week
+      const classConflict = existingSummaries.find(s => 
+        s.classId === data.classId && 
+        s.subjectId === data.subjectId
+      );
+      
+      if (classConflict) {
+        return res.status(400).json({ 
+          message: `A learning summary already exists for this class and subject in Week ${data.weekNumber}` 
+        });
+      }
+      
+      // Check for quiz scheduling conflicts - same teacher, same quiz day/time
+      if (data.quizDay && data.quizTime) {
+        const quizConflict = existingSummaries.find(s => 
+          s.teacherId === user.id &&
+          s.quizDay === data.quizDay && 
+          s.quizTime === data.quizTime
+        );
+        
+        if (quizConflict) {
+          return res.status(400).json({ 
+            message: `You already have a quiz scheduled for ${data.quizDay} Period ${data.quizTime} in Week ${data.weekNumber}` 
+          });
+        }
+      }
+      
       const summary = await storage.createLearningSummary({
         ...data,
         teacherId: user.id,
@@ -1462,6 +1495,46 @@ export async function registerRoutes(
       // Convert quizDate string to Date object if present
       if (updateData.quizDate && typeof updateData.quizDate === 'string') {
         updateData.quizDate = new Date(updateData.quizDate);
+      }
+      
+      // Check for conflicts when updating class/subject or quiz scheduling
+      const targetClassId = updateData.classId || existing.classId;
+      const targetSubjectId = updateData.subjectId || existing.subjectId;
+      const targetQuizDay = updateData.quizDay !== undefined ? updateData.quizDay : existing.quizDay;
+      const targetQuizTime = updateData.quizTime !== undefined ? updateData.quizTime : existing.quizTime;
+      
+      const existingSummaries = await storage.getLearningSummaries({
+        term: existing.term,
+        weekNumber: existing.weekNumber
+      });
+      
+      // Check for class/subject conflict (excluding current entry)
+      const classConflict = existingSummaries.find(s => 
+        s.id !== id &&
+        s.classId === targetClassId && 
+        s.subjectId === targetSubjectId
+      );
+      
+      if (classConflict) {
+        return res.status(400).json({ 
+          message: `A learning summary already exists for this class and subject in Week ${existing.weekNumber}` 
+        });
+      }
+      
+      // Check for quiz scheduling conflicts (excluding current entry)
+      if (targetQuizDay && targetQuizTime) {
+        const quizConflict = existingSummaries.find(s => 
+          s.id !== id &&
+          s.teacherId === existing.teacherId &&
+          s.quizDay === targetQuizDay && 
+          s.quizTime === targetQuizTime
+        );
+        
+        if (quizConflict) {
+          return res.status(400).json({ 
+            message: `You already have a quiz scheduled for ${targetQuizDay} Period ${targetQuizTime} in Week ${existing.weekNumber}` 
+          });
+        }
       }
       
       if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL") {
@@ -1713,12 +1786,52 @@ export async function registerRoutes(
       // Calculate week dates based on term and week number
       const { weekStartDate, weekEndDate } = getWeekDates(req.body.term, req.body.weekNumber);
       
+      // Convert sapetDate to Date for comparison
+      const sapetDate = req.body.sapetDate ? new Date(req.body.sapetDate) : null;
+      
+      // Check for conflicts - each class can only have one SAPET session per day
+      if (sapetDate && req.body.classId) {
+        const existingSupport = await storage.getLearningSupport({
+          term: req.body.term,
+          weekNumber: req.body.weekNumber
+        });
+        
+        // Check if this class already has a session on the same date
+        const classDateConflict = existingSupport.find(s => {
+          if (s.classId !== req.body.classId || !s.sapetDate) return false;
+          const existingDate = new Date(s.sapetDate);
+          return existingDate.toDateString() === sapetDate.toDateString();
+        });
+        
+        if (classDateConflict) {
+          return res.status(400).json({ 
+            message: `This class already has a SAPET session scheduled for ${sapetDate.toLocaleDateString()}` 
+          });
+        }
+        
+        // Check if same teacher has a session at the same time on the same day
+        if (req.body.sapetTime) {
+          const teacherTimeConflict = existingSupport.find(s => {
+            if (s.teacherId !== user.id || !s.sapetDate || !s.sapetTime) return false;
+            const existingDate = new Date(s.sapetDate);
+            return existingDate.toDateString() === sapetDate.toDateString() && 
+                   s.sapetTime === req.body.sapetTime;
+          });
+          
+          if (teacherTimeConflict) {
+            return res.status(400).json({ 
+              message: `You already have a SAPET session scheduled for ${sapetDate.toLocaleDateString()} at ${req.body.sapetTime}` 
+            });
+          }
+        }
+      }
+      
       // Convert sapetDate string to Date object if provided
       const supportData = {
         ...req.body,
         teacherId: user.id,
         status: "DRAFT",
-        sapetDate: req.body.sapetDate ? new Date(req.body.sapetDate) : null,
+        sapetDate: sapetDate,
         weekStartDate,
         weekEndDate
       };
@@ -1765,8 +1878,52 @@ export async function registerRoutes(
       }
       
       // Convert sapetDate string to Date object if provided
+      const targetSapetDate = updateData.sapetDate !== undefined 
+        ? (updateData.sapetDate ? new Date(updateData.sapetDate) : null)
+        : existing.sapetDate;
+      
       if (updateData.sapetDate !== undefined) {
         updateData.sapetDate = updateData.sapetDate ? new Date(updateData.sapetDate) : null;
+      }
+      
+      // Check for conflicts when updating
+      const targetClassId = updateData.classId || existing.classId;
+      const targetSapetTime = updateData.sapetTime !== undefined ? updateData.sapetTime : existing.sapetTime;
+      
+      if (targetSapetDate && targetClassId) {
+        const existingSupport = await storage.getLearningSupport({
+          term: existing.term,
+          weekNumber: existing.weekNumber
+        });
+        
+        // Check if this class already has a session on the same date (excluding current)
+        const classDateConflict = existingSupport.find(s => {
+          if (s.id === id || s.classId !== targetClassId || !s.sapetDate) return false;
+          const existingDate = new Date(s.sapetDate);
+          return existingDate.toDateString() === targetSapetDate.toDateString();
+        });
+        
+        if (classDateConflict) {
+          return res.status(400).json({ 
+            message: `This class already has a SAPET session scheduled for ${targetSapetDate.toLocaleDateString()}` 
+          });
+        }
+        
+        // Check if same teacher has a session at the same time on the same day (excluding current)
+        if (targetSapetTime) {
+          const teacherTimeConflict = existingSupport.find(s => {
+            if (s.id === id || s.teacherId !== existing.teacherId || !s.sapetDate || !s.sapetTime) return false;
+            const existingDate = new Date(s.sapetDate);
+            return existingDate.toDateString() === targetSapetDate.toDateString() && 
+                   s.sapetTime === targetSapetTime;
+          });
+          
+          if (teacherTimeConflict) {
+            return res.status(400).json({ 
+              message: `You already have a SAPET session scheduled for ${targetSapetDate.toLocaleDateString()} at ${targetSapetTime}` 
+            });
+          }
+        }
       }
       
       const support = await storage.updateLearningSupport(id, updateData);
