@@ -10,7 +10,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
 import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes, userRoles, departments } from "../shared/schema";
-import { getSendGridClient } from "./sendgrid";
+import { getSendGridClient, sendBookingNotification } from "./sendgrid";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -2101,23 +2101,73 @@ export async function registerRoutes(
     }
   });
 
-  // Submit for approval
+  // Submit and confirm booking (auto-approve with notification)
   app.post("/api/learning-summaries/:id/submit", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
       const id = Number(req.params.id);
+      const user = req.user as any;
       const existing = await storage.getLearningSummaryById(id);
       
       if (!existing) {
         return res.status(404).json({ message: "Learning summary not found" });
       }
       
-      const summary = await storage.updateLearningSummary(id, { status: "PENDING_APPROVAL" });
+      // Auto-approve the entry
+      const summary = await storage.updateLearningSummary(id, { 
+        status: "APPROVED",
+        approvedById: user.id
+      });
+      
+      // Create quiz event in scheduler if quiz is scheduled
+      if (summary.quizDay && summary.quizDate && summary.quizTime) {
+        try {
+          await storage.createExamEvent({
+            date: new Date(summary.quizDate),
+            period: parseInt(summary.quizTime),
+            type: "QUIZ",
+            teacherId: summary.teacherId,
+            subjectId: summary.subjectId,
+            classId: summary.classId,
+            status: "SCHEDULED",
+            notes: `Quiz from Learning Summary (Week ${summary.weekNumber})`
+          });
+        } catch (eventErr) {
+          console.error("Failed to create quiz event:", eventErr);
+        }
+      }
+      
+      // Send notification email to teacher
+      try {
+        const teacher = await storage.getUser(summary.teacherId);
+        const classData = await storage.getClass(summary.classId);
+        const subjectData = await storage.getSubject(summary.subjectId);
+        
+        if (teacher && classData && subjectData) {
+          await sendBookingNotification({
+            teacherName: teacher.name,
+            teacherEmail: teacher.email,
+            entryType: 'learning_summary',
+            className: classData.name,
+            subjectName: subjectData.name,
+            grade: summary.grade,
+            term: summary.term,
+            weekNumber: summary.weekNumber,
+            topics: summary.upcomingTopics || undefined,
+            quizDay: summary.quizDay || undefined,
+            quizDate: summary.quizDate ? format(new Date(summary.quizDate), 'yyyy-MM-dd') : undefined,
+            quizTime: summary.quizTime || undefined
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send notification email:", emailErr);
+      }
+      
       res.json(summary);
     } catch (err) {
       console.error("Submit learning summary error:", err);
-      res.status(500).json({ message: "Failed to submit for approval" });
+      res.status(500).json({ message: "Failed to submit booking" });
     }
   });
 
@@ -2504,23 +2554,56 @@ export async function registerRoutes(
     }
   });
 
-  // Submit for approval
+  // Submit and confirm booking (auto-approve with notification)
   app.post("/api/learning-support/:id/submit", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     
     try {
       const id = Number(req.params.id);
+      const user = req.user as any;
       const existing = await storage.getLearningSupportById(id);
       
       if (!existing) {
         return res.status(404).json({ message: "Learning support not found" });
       }
       
-      const support = await storage.updateLearningSupport(id, { status: "PENDING_APPROVAL" });
+      // Auto-approve the entry
+      const support = await storage.updateLearningSupport(id, { 
+        status: "APPROVED",
+        approvedById: user.id
+      });
+      
+      // Send notification email to teacher
+      try {
+        const teacher = await storage.getUser(support.teacherId);
+        const classData = await storage.getClass(support.classId);
+        const subjectData = await storage.getSubject(support.subjectId);
+        
+        if (teacher && classData && subjectData) {
+          await sendBookingNotification({
+            teacherName: teacher.name,
+            teacherEmail: teacher.email,
+            entryType: 'learning_support',
+            className: classData.name,
+            subjectName: subjectData.name,
+            grade: support.grade,
+            term: support.term,
+            weekNumber: support.weekNumber,
+            sessionType: support.sessionType || undefined,
+            sapetDay: support.sapetDay || undefined,
+            sapetDate: support.sapetDate ? format(new Date(support.sapetDate), 'yyyy-MM-dd') : undefined,
+            sapetTime: support.sapetTime || undefined,
+            teamsLink: support.teamsLink || undefined
+          });
+        }
+      } catch (emailErr) {
+        console.error("Failed to send notification email:", emailErr);
+      }
+      
       res.json(support);
     } catch (err) {
       console.error("Submit learning support error:", err);
-      res.status(500).json({ message: "Failed to submit for approval" });
+      res.status(500).json({ message: "Failed to submit booking" });
     }
   });
 
