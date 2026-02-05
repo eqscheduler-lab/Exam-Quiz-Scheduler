@@ -425,19 +425,24 @@ export default function AcademicPlanningHub() {
   };
 
   // Initialize attendance data when existing records are loaded
-  const initializeAttendanceFromExisting = () => {
-    if (existingAttendance.length > 0) {
-      const data: Record<number, "PRESENT" | "ABSENT"> = {};
-      existingAttendance.forEach(record => {
-        data[record.studentId] = record.status;
-      });
-      setAttendanceData(data);
-    }
-  };
-
-  // Effect to initialize attendance when dialog opens with existing records
-  if (attendanceSession && existingAttendance.length > 0 && Object.keys(attendanceData).length === 0) {
-    initializeAttendanceFromExisting();
+  const attendanceSessionId = attendanceSession?.id;
+  const existingAttendanceLength = existingAttendance.length;
+  
+  // Using a ref-like approach to track if we've initialized for this session
+  const [initializedForSession, setInitializedForSession] = useState<number | null>(null);
+  
+  if (attendanceSessionId && existingAttendanceLength > 0 && initializedForSession !== attendanceSessionId) {
+    const data: Record<number, "PRESENT" | "ABSENT"> = {};
+    existingAttendance.forEach(record => {
+      data[record.studentId] = record.status;
+    });
+    setAttendanceData(data);
+    setInitializedForSession(attendanceSessionId);
+  }
+  
+  // Reset initialization tracker when dialog closes
+  if (!attendanceDialogOpen && initializedForSession !== null) {
+    setInitializedForSession(null);
   }
 
   const handleSupportSubmit = (e: React.FormEvent<HTMLFormElement>) => {
