@@ -720,7 +720,7 @@ export default function AcademicPlanningHub() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
-                                {isOwner && s.status === "DRAFT" && (
+                                {(isOwner || isAdmin) && s.status === "DRAFT" && (
                                   <>
                                     <Button 
                                       size="icon" 
@@ -750,7 +750,7 @@ export default function AcademicPlanningHub() {
                                     </Button>
                                   </>
                                 )}
-                                {isOwner && s.status === "APPROVED" && (
+                                {(isOwner || isAdmin) && s.status === "APPROVED" && (
                                   <>
                                     <Button 
                                       size="icon" 
@@ -1178,7 +1178,7 @@ export default function AcademicPlanningHub() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
-                                  {isOwner && s.status === "DRAFT" && (
+                                  {(isOwner || isAdmin) && s.status === "DRAFT" && (
                                     <>
                                       <Button 
                                         size="icon" 
@@ -1210,7 +1210,7 @@ export default function AcademicPlanningHub() {
                                   )}
                                   {s.status === "APPROVED" && (
                                     <>
-                                      {isOwner && (
+                                      {(isOwner || isAdmin) && (
                                         <Button 
                                           size="icon" 
                                           variant="ghost"
@@ -1220,7 +1220,7 @@ export default function AcademicPlanningHub() {
                                           <Edit className="h-4 w-4" />
                                         </Button>
                                       )}
-                                      {isOwner && (
+                                      {(isOwner || isAdmin) && (
                                         <Button 
                                           size="icon" 
                                           variant="ghost"
