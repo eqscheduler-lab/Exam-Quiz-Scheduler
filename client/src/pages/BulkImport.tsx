@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Download, Upload, Users, BookOpen, GraduationCap, CheckCircle, XCircle, Loader2, FileText } from "lucide-react";
+import { Download, Upload, Users, BookOpen, GraduationCap, CheckCircle, XCircle, Loader2, FileText, UserPlus } from "lucide-react";
 
 interface ImportResult {
   success: number;
@@ -23,9 +23,10 @@ export default function BulkImport() {
   const [staffFile, setStaffFile] = useState<File | null>(null);
   const [subjectsFile, setSubjectsFile] = useState<File | null>(null);
   const [classesFile, setClassesFile] = useState<File | null>(null);
+  const [studentsFile, setStudentsFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
-  const downloadTemplate = (type: "staff" | "subjects" | "classes") => {
+  const downloadTemplate = (type: "staff" | "subjects" | "classes" | "students") => {
     let csvContent = "";
     let filename = "";
     
@@ -41,6 +42,10 @@ export default function BulkImport() {
       case "classes":
         csvContent = "name\nA9[AET]/1\nA9[AET]/2\nA10[AMT]/1\nA10[AMT]/2\nA11[ENI]/1\nA12[CAI]/1";
         filename = "classes_template.csv";
+        break;
+      case "students":
+        csvContent = "student_id,name,class_name\nSTU001,Ahmad bin Abdullah,A10[AMT]/1\nSTU002,Sarah binti Ahmad,A10[AMT]/1\nSTU003,Muhammad Ali,A11[ENI]/1";
+        filename = "students_template.csv";
         break;
     }
     
@@ -84,6 +89,9 @@ export default function BulkImport() {
       } else if (variables.type === "classes") {
         queryClient.invalidateQueries({ queryKey: ["/api/classes"] });
         setClassesFile(null);
+      } else if (variables.type === "students") {
+        queryClient.invalidateQueries({ queryKey: ["/api/students"] });
+        setStudentsFile(null);
       }
       
       toast({
@@ -101,7 +109,7 @@ export default function BulkImport() {
     },
   });
 
-  const handleImport = (type: "staff" | "subjects" | "classes") => {
+  const handleImport = (type: "staff" | "subjects" | "classes" | "students") => {
     let file: File | null = null;
     
     switch (type) {
@@ -113,6 +121,9 @@ export default function BulkImport() {
         break;
       case "classes":
         file = classesFile;
+        break;
+      case "students":
+        file = studentsFile;
         break;
     }
     
@@ -132,7 +143,7 @@ export default function BulkImport() {
           <FileText className="w-8 h-8 text-primary" />
           <div>
             <h1 className="text-2xl font-bold">Bulk Import</h1>
-            <p className="text-muted-foreground">Import staff, subjects, and classes from CSV files</p>
+            <p className="text-muted-foreground">Import staff, subjects, classes, and students from CSV files</p>
           </div>
         </div>
 
@@ -174,7 +185,7 @@ export default function BulkImport() {
         )}
 
         <Tabs defaultValue="staff" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="staff" className="flex items-center gap-2" data-testid="tab-staff">
               <Users className="w-4 h-4" />
               Staff
@@ -186,6 +197,10 @@ export default function BulkImport() {
             <TabsTrigger value="classes" className="flex items-center gap-2" data-testid="tab-classes">
               <GraduationCap className="w-4 h-4" />
               Classes
+            </TabsTrigger>
+            <TabsTrigger value="students" className="flex items-center gap-2" data-testid="tab-students">
+              <UserPlus className="w-4 h-4" />
+              Students
             </TabsTrigger>
           </TabsList>
 
@@ -332,6 +347,55 @@ export default function BulkImport() {
                     </Button>
                   </div>
                   {classesFile && <p className="text-sm text-muted-foreground">Selected: {classesFile.name}</p>}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="students">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5" />
+                  Import Students
+                </CardTitle>
+                <CardDescription>
+                  Import students with their class assignments. Required fields: student_id, name, class_name.
+                  The class_name must match an existing class in the system.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <Button variant="outline" onClick={() => downloadTemplate("students")} data-testid="button-download-students-template">
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Template
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="students-file">Upload CSV File</Label>
+                  <div className="flex gap-4">
+                    <Input
+                      id="students-file"
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => setStudentsFile(e.target.files?.[0] || null)}
+                      data-testid="input-students-file"
+                    />
+                    <Button 
+                      onClick={() => handleImport("students")} 
+                      disabled={!studentsFile || importMutation.isPending}
+                      data-testid="button-import-students"
+                    >
+                      {importMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 mr-2" />
+                      )}
+                      Import Students
+                    </Button>
+                  </div>
+                  {studentsFile && <p className="text-sm text-muted-foreground">Selected: {studentsFile.name}</p>}
                 </div>
               </CardContent>
             </Card>

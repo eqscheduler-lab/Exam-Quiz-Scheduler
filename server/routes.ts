@@ -579,6 +579,64 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/admin/bulk-import/students", upload.single("file"), async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const content = req.file.buffer.toString("utf-8");
+      const rows = parseCSV(content);
+      
+      if (rows.length === 0) {
+        return res.status(400).json({ message: "CSV file is empty or invalid format" });
+      }
+      
+      const allClasses = await storage.getAllClasses();
+      const classMap = new Map(allClasses.map(c => [c.name, c.id]));
+      
+      let success = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      
+      for (const row of rows) {
+        try {
+          const { student_id, name, class_name } = row;
+          
+          if (!student_id || !name || !class_name) {
+            errors.push(`Row missing required fields (student_id, name, class_name): ${JSON.stringify(row)}`);
+            failed++;
+            continue;
+          }
+          
+          const classId = classMap.get(class_name);
+          if (!classId) {
+            errors.push(`Class not found: "${class_name}" for student ${name}`);
+            failed++;
+            continue;
+          }
+          
+          await storage.createStudent({
+            studentId: student_id,
+            name,
+            classId
+          });
+          success++;
+        } catch (error: any) {
+          errors.push(`Failed to import ${row.name || "unknown"}: ${error.message}`);
+          failed++;
+        }
+      }
+      
+      res.json({ success, failed, errors });
+    } catch (error: any) {
+      console.error("Students import error:", error);
+      res.status(500).json({ message: error.message || "Import failed" });
+    }
+  });
+
   app.post("/api/user/change-password", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { currentPassword, newPassword } = req.body;

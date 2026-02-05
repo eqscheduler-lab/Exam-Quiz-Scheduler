@@ -59,6 +59,7 @@ Admins can bulk import data using CSV files with downloadable templates:
 - **Staff Import** (`/admin/bulk-import`): Import teachers/coordinators/admins with columns: name, username, email, role. Default password: "Staff123"
 - **Subjects Import**: Import subjects with columns: code, name
 - **Classes Import**: Import classes with column: name (format: A[Grade][Program]/Section)
+- **Students Import**: Import students with columns: student_id, name, class_name. Class name must match an existing class.
 
 ### Academic Planning Hub (`/academic-planning`)
 The Academic Planning Hub allows teachers and administrators to manage learning summaries and learning support schedules. Features include:
