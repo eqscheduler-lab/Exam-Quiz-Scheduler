@@ -281,14 +281,17 @@ export default function ManageStaff() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Department</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                        <Select 
+                          onValueChange={(val) => field.onChange(val === "__none__" ? null : val)} 
+                          defaultValue={field.value || "__none__"}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a department" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
+                            <SelectItem value="__none__">None</SelectItem>
                             {departments.map((dept) => (
                               <SelectItem key={dept} value={dept}>
                                 {dept.replace(/_/g, " ")}
@@ -443,12 +446,12 @@ export default function ManageStaff() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Department</label>
-                  <Select value={editDepartment || ""} onValueChange={(val) => setEditDepartment(val === "" ? null : val)}>
+                  <Select value={editDepartment || "__none__"} onValueChange={(val) => setEditDepartment(val === "__none__" ? null : val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {departments.map((dept) => (
                         <SelectItem key={dept} value={dept}>{dept.replace(/_/g, " ")}</SelectItem>
                       ))}
