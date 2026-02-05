@@ -84,21 +84,21 @@ The Academic Planning Hub allows teachers and administrators to manage learning 
 **Learning Summaries**
 - Weekly planning entries with upcoming topics and optional quiz scheduling
 - Term and week selectors (3 terms, 15 weeks each)
-- When approved, automatically creates quiz exam events in the scheduler
-- PDF export for weekly reports (approved entries only)
+- When confirmed, automatically creates quiz exam events in the scheduler
+- PDF export for weekly reports (confirmed entries only)
 
 **Learning Support (SAPET Program)**
 - Session scheduling with Teams meeting links (URL validated)
 - SAPET day/date/time fields for session planning
-- PDF export for weekly reports (approved entries only)
+- PDF export for weekly reports (confirmed entries only)
 
-**Approval Workflow**
-- Four statuses: DRAFT → PENDING_APPROVAL → APPROVED/REJECTED
-- Teachers create and edit their own entries
-- Editing approved entries reverts status to PENDING_APPROVAL
-- Only Admins and Vice Principals can approve/reject entries
-- Approval comments supported for feedback
-- Rejection removes linked scheduler events
+**Booking Confirmation Workflow**
+- Statuses: DRAFT → APPROVED (auto-confirmed on submit)
+- Teachers create entries in DRAFT status
+- Clicking "Confirm booking" (green checkmark) automatically confirms the entry
+- Email notification sent to teacher upon confirmation via SendGrid
+- Quiz events automatically created in scheduler for Learning Summaries with quiz details
+- No manual approval required - entries are instantly confirmed
 
 ### Project Structure
 ```
