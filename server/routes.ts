@@ -250,6 +250,68 @@ export async function registerRoutes(
     }
   });
 
+  // === STUDENTS ===
+  app.get("/api/students", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const classId = req.query.classId ? Number(req.query.classId) : undefined;
+      const studentsList = await storage.getAllStudents(classId);
+      res.json(studentsList);
+    } catch (err) {
+      console.error("Get students error:", err);
+      res.status(500).json({ message: "Failed to fetch students" });
+    }
+  });
+
+  app.post("/api/students", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const { name, studentId, classId } = req.body;
+      if (!name || !studentId || !classId) {
+        return res.status(400).json({ message: "Name, student ID, and class are required" });
+      }
+      const newStudent = await storage.createStudent({ name, studentId, classId });
+      res.status(201).json(newStudent);
+    } catch (err: any) {
+      console.error("Create student error:", err);
+      if (err.message?.includes("unique constraint")) {
+        return res.status(400).json({ message: "A student with this ID already exists" });
+      }
+      res.status(500).json({ message: "Failed to create student" });
+    }
+  });
+
+  app.patch("/api/students/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const id = Number(req.params.id);
+      const { name, studentId, classId } = req.body;
+      const updatedStudent = await storage.updateStudent(id, { name, studentId, classId });
+      res.json(updatedStudent);
+    } catch (err: any) {
+      console.error("Update student error:", err);
+      if (err.message?.includes("unique constraint")) {
+        return res.status(400).json({ message: "A student with this ID already exists" });
+      }
+      res.status(500).json({ message: "Failed to update student" });
+    }
+  });
+
+  app.delete("/api/students/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "ADMIN") return res.sendStatus(403);
+    try {
+      const id = Number(req.params.id);
+      await storage.deleteStudent(id);
+      res.sendStatus(200);
+    } catch (err: any) {
+      console.error("Delete student error:", err);
+      if (err.message?.includes("foreign key constraint")) {
+        return res.status(400).json({ message: "Cannot delete student with existing attendance records" });
+      }
+      res.status(500).json({ message: "Failed to delete student" });
+    }
+  });
+
   // === SUBJECTS ===
   app.get(api.subjects.list.path, async (req, res) => {
     const subjectsList = await storage.getAllSubjects();

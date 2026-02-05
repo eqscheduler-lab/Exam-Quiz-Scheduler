@@ -27,8 +27,10 @@ export interface IStorage {
   deleteSubject(id: number): Promise<void>;
 
   // Students
-  getAllStudents(): Promise<typeof students.$inferSelect[]>;
+  getAllStudents(classId?: number): Promise<typeof students.$inferSelect[]>;
   createStudent(student: typeof students.$inferInsert): Promise<typeof students.$inferSelect>;
+  updateStudent(id: number, student: Partial<typeof students.$inferInsert>): Promise<typeof students.$inferSelect>;
+  deleteStudent(id: number): Promise<void>;
 
   // Exams
   getExams(filters?: { 
@@ -151,13 +153,25 @@ export class DatabaseStorage implements IStorage {
     await db.delete(subjects).where(eq(subjects.id, id));
   }
 
-  async getAllStudents(): Promise<typeof students.$inferSelect[]> {
+  async getAllStudents(classId?: number): Promise<typeof students.$inferSelect[]> {
+    if (classId) {
+      return await db.select().from(students).where(eq(students.classId, classId));
+    }
     return await db.select().from(students);
   }
 
   async createStudent(student: typeof students.$inferInsert): Promise<typeof students.$inferSelect> {
     const [newStudent] = await db.insert(students).values(student).returning();
     return newStudent;
+  }
+
+  async updateStudent(id: number, student: Partial<typeof students.$inferInsert>): Promise<typeof students.$inferSelect> {
+    const [updatedStudent] = await db.update(students).set(student).where(eq(students.id, id)).returning();
+    return updatedStudent;
+  }
+
+  async deleteStudent(id: number): Promise<void> {
+    await db.delete(students).where(eq(students.id, id));
   }
 
   async getExams(filters?: { 

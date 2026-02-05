@@ -13,6 +13,7 @@ import MyExamsPage from "@/pages/MyExamsPage";
 import ManageStaff from "@/pages/ManageStaff";
 import ManageSubjects from "@/pages/ManageSubjects";
 import ManageClasses from "@/pages/ManageClasses";
+import ManageStudents from "@/pages/ManageStudents";
 import LoginAudit from "@/pages/LoginAudit";
 import Analytics from "@/pages/Analytics";
 import BulkImport from "@/pages/BulkImport";
@@ -68,6 +69,9 @@ function Router() {
       </Route>
       <Route path="/admin/classes">
         <ProtectedRoute component={ManageClasses} allowedRoles={["ADMIN"]} />
+      </Route>
+      <Route path="/admin/students">
+        <ProtectedRoute component={ManageStudents} allowedRoles={["ADMIN"]} />
       </Route>
       <Route path="/admin/login-audit">
         <ProtectedRoute component={LoginAudit} allowedRoles={["ADMIN"]} />
