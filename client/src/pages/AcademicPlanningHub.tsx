@@ -936,12 +936,11 @@ export default function AcademicPlanningHub() {
                                 <Label htmlFor="sapetDay">SAPET Day</Label>
                                 <Select name="sapetDay" defaultValue={editingSupport?.sapetDay || ""}>
                                   <SelectTrigger data-testid="input-sapet-day">
-                                    <SelectValue placeholder="Day" />
+                                    <SelectValue placeholder="Select day" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {DAYS.map(d => (
-                                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                                    ))}
+                                    <SelectItem value="Saturday">Saturday</SelectItem>
+                                    <SelectItem value="Sunday">Sunday</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
