@@ -76,7 +76,7 @@ export const users = pgTable("users", {
   role: text("role", { enum: userRoles }).notNull().default("TEACHER"),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  department: text("department", { enum: departments }),
+  department: text("department"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   lastAccessedAt: timestamp("last_accessed_at"),

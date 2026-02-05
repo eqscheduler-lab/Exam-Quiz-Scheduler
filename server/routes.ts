@@ -529,6 +529,10 @@ export async function registerRoutes(
       const errors: string[] = [];
       const defaultPassword = await bcrypt.hash("Staff123", 10);
       
+      // Fetch valid departments from database
+      const dbDepartments = await storage.getAllDepartments();
+      const validDeptNames = dbDepartments.map(d => d.name);
+      
       for (const row of rows) {
         try {
           const { name, username, email, role, department } = row;
@@ -546,16 +550,16 @@ export async function registerRoutes(
             continue;
           }
           
-          // Handle department (optional field)
-          let normalizedDepartment: typeof departments[number] | null = null;
+          // Handle department (optional field) - validate against database departments
+          let normalizedDepartment: string | null = null;
           if (department && department.trim() !== "") {
-            const deptUpper = department.toUpperCase().trim();
-            if (!(departments as readonly string[]).includes(deptUpper)) {
-              errors.push(`Invalid department "${department}" for user ${username}. Valid departments: ${departments.join(", ")}`);
+            const deptUpper = department.toUpperCase().replace(/\s+/g, "_").trim();
+            if (!validDeptNames.includes(deptUpper)) {
+              errors.push(`Invalid department "${department}" for user ${username}. Valid departments: ${validDeptNames.join(", ")}`);
               failed++;
               continue;
             }
-            normalizedDepartment = deptUpper as typeof departments[number];
+            normalizedDepartment = deptUpper;
           }
           
           await storage.createUser({

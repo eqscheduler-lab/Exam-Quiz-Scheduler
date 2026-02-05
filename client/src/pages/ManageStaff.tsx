@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, UserPlus, Mail, Shield, Trash2, Loader2, Download, Pencil, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@shared/routes";
-import { type User, userRoles, departments } from "@shared/schema";
+import { type User, type Department, userRoles } from "@shared/schema";
 import { useState } from "react";
 import {
   Dialog,
@@ -58,6 +58,10 @@ export default function ManageStaff() {
 
   const { data: staff, isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
   });
 
   const exportStaffList = () => {
@@ -293,8 +297,8 @@ export default function ManageStaff() {
                           <SelectContent>
                             <SelectItem value="__none__">None</SelectItem>
                             {departments.map((dept) => (
-                              <SelectItem key={dept} value={dept}>
-                                {dept.replace(/_/g, " ")}
+                              <SelectItem key={dept.id} value={dept.name}>
+                                {dept.displayName}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -453,7 +457,7 @@ export default function ManageStaff() {
                     <SelectContent>
                       <SelectItem value="__none__">None</SelectItem>
                       {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>{dept.replace(/_/g, " ")}</SelectItem>
+                        <SelectItem key={dept.id} value={dept.name}>{dept.displayName}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
