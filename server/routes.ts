@@ -2079,10 +2079,6 @@ export async function registerRoutes(
         }
       }
       
-      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
-        updateData.status = "PENDING_APPROVAL";
-      }
-      
       const summary = await storage.updateLearningSummary(id, updateData);
       res.json(summary);
     } catch (err) {
@@ -2138,19 +2134,38 @@ export async function registerRoutes(
       // Create quiz event in scheduler if quiz is scheduled
       if (summary.quizDay && summary.quizDate && summary.quizTime) {
         try {
-          const allSubjects = await storage.getAllSubjects();
-          const subjectForTitle = allSubjects.find(s => s.id === summary.subjectId);
-          await storage.createExam({
-            date: new Date(summary.quizDate),
-            period: parseInt(summary.quizTime),
-            type: "QUIZ",
-            title: `${subjectForTitle?.code || 'Quiz'} - Learning Summary Week ${summary.weekNumber}`,
-            subjectId: summary.subjectId,
-            classId: summary.classId,
-            createdByUserId: summary.teacherId,
-            status: "SCHEDULED",
-            notes: `Quiz from Learning Summary (Week ${summary.weekNumber})`
+          const quizDate = new Date(summary.quizDate);
+          const quizPeriod = parseInt(summary.quizTime);
+          
+          // Check for conflicts with existing exams in master schedule
+          const allExams = await storage.getExams();
+          const conflict = allExams.find((e: any) => {
+            const examDate = new Date(e.date);
+            return examDate.toDateString() === quizDate.toDateString() &&
+                   e.period === quizPeriod &&
+                   e.classId === summary.classId;
           });
+          
+          if (conflict) {
+            // Still approve the summary but skip creating duplicate quiz event
+            console.log(`Quiz event skipped - conflict with existing exam id=${conflict.id} on ${quizDate.toDateString()} period ${quizPeriod}`);
+          } else {
+            const allSubjects = await storage.getAllSubjects();
+            const subjectForTitle = allSubjects.find(s => s.id === summary.subjectId);
+            const newExam = await storage.createExam({
+              date: quizDate,
+              period: quizPeriod,
+              type: "QUIZ",
+              title: `${subjectForTitle?.code || 'Quiz'} - Learning Summary Week ${summary.weekNumber}`,
+              subjectId: summary.subjectId,
+              classId: summary.classId,
+              createdByUserId: summary.teacherId,
+              status: "SCHEDULED",
+              notes: `Quiz from Learning Summary (Week ${summary.weekNumber})`
+            });
+            // Link the exam to the learning summary
+            await storage.updateLearningSummary(id, { linkedExamId: newExam.id });
+          }
         } catch (eventErr) {
           console.error("Failed to create quiz event:", eventErr);
         }
@@ -2486,11 +2501,7 @@ export async function registerRoutes(
         }
       }
       
-      // If editing an approved entry, revert to pending approval
       let updateData = { ...req.body };
-      if (existing.status === "APPROVED" && user.role !== "ADMIN" && user.role !== "VICE_PRINCIPAL" && user.role !== "LEAD_TEACHER") {
-        updateData.status = "PENDING_APPROVAL";
-      }
       
       // Convert sapetDate string to Date object if provided
       const targetSapetDate = updateData.sapetDate !== undefined 

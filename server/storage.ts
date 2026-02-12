@@ -554,6 +554,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLearningSummary(id: number): Promise<void> {
+    const [summary] = await db.select().from(learningSummaries).where(eq(learningSummaries.id, id)).limit(1);
+    if (summary?.linkedExamId) {
+      await db.delete(examEvents).where(eq(examEvents.id, summary.linkedExamId));
+    }
     await db.delete(learningSummaries).where(eq(learningSummaries.id, id));
   }
 
@@ -627,6 +631,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteLearningSupport(id: number): Promise<void> {
+    await db.delete(sapetAttendance).where(eq(sapetAttendance.learningSupportId, id));
     await db.delete(learningSupport).where(eq(learningSupport.id, id));
   }
 

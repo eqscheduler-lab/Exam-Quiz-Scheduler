@@ -250,6 +250,9 @@ export default function AcademicPlanningHub() {
     onSuccess: () => {
       invalidateSummaries();
       toast({ title: "Learning summary deleted" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to delete", description: err.message, variant: "destructive" });
     }
   });
 
@@ -258,6 +261,9 @@ export default function AcademicPlanningHub() {
     onSuccess: () => {
       invalidateSummaries();
       toast({ title: "Booking confirmed", description: "A confirmation email has been sent" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to confirm booking", description: err.message, variant: "destructive" });
     }
   });
 
@@ -289,6 +295,9 @@ export default function AcademicPlanningHub() {
     onSuccess: () => {
       invalidateSupport();
       toast({ title: "Learning support deleted" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to delete", description: err.message, variant: "destructive" });
     }
   });
 
@@ -312,6 +321,9 @@ export default function AcademicPlanningHub() {
     onSuccess: () => {
       invalidateSupport();
       toast({ title: "Booking confirmed", description: "A confirmation email has been sent" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to confirm booking", description: err.message, variant: "destructive" });
     }
   });
 
@@ -720,7 +732,7 @@ export default function AcademicPlanningHub() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
-                                {(isOwner || isAdmin) && s.status === "DRAFT" && (
+                                {(isOwner || isAdmin) && (s.status === "DRAFT" || s.status === "PENDING_APPROVAL") && (
                                   <>
                                     <Button 
                                       size="icon" 
@@ -1178,7 +1190,7 @@ export default function AcademicPlanningHub() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-1">
-                                  {(isOwner || isAdmin) && s.status === "DRAFT" && (
+                                  {(isOwner || isAdmin) && (s.status === "DRAFT" || s.status === "PENDING_APPROVAL") && (
                                     <>
                                       <Button 
                                         size="icon" 
