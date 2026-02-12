@@ -185,6 +185,37 @@ export const learningSupport = pgTable("learning_support", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Certificate System
+export const certificateStatuses = ["ISSUED", "REVOKED", "EXPIRED"] as const;
+
+export const certificateTemplates = pgTable("certificate_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  htmlTemplate: text("html_template").notNull(),
+  cssTemplate: text("css_template").notNull().default(""),
+  isActive: boolean("is_active").default(true).notNull(),
+  version: integer("version").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const certificates = pgTable("certificates", {
+  id: serial("id").primaryKey(),
+  publicId: text("public_id").notNull().unique(),
+  templateId: integer("template_id").references(() => certificateTemplates.id).notNull(),
+  recipientUserId: integer("recipient_user_id").references(() => users.id).notNull(),
+  issuedByUserId: integer("issued_by_user_id").references(() => users.id).notNull(),
+  recipientName: text("recipient_name").notNull(),
+  recipientRole: text("recipient_role").notNull(),
+  recipientDepartment: text("recipient_department"),
+  title: text("title").notNull(),
+  status: text("status", { enum: certificateStatuses }).notNull().default("ISSUED"),
+  issuedAt: timestamp("issued_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+  expiresAt: timestamp("expires_at"),
+  payload: jsonb("payload").$type<Record<string, string>>(),
+});
+
 // Insert Schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertClassSchema = createInsertSchema(classes).omit({ id: true });
@@ -195,6 +226,8 @@ export const insertSettingsSchema = createInsertSchema(settings).omit({ id: true
 export const insertLoginAuditSchema = createInsertSchema(loginAudit).omit({ id: true, loginAt: true });
 export const insertLearningSummarySchema = createInsertSchema(learningSummaries).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertLearningSupportSchema = createInsertSchema(learningSupport).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCertificateTemplateSchema = createInsertSchema(certificateTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertCertificateSchema = createInsertSchema(certificates).omit({ id: true, issuedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -233,3 +266,8 @@ export const sapetAttendance = pgTable("sapet_attendance", {
 export const insertSapetAttendanceSchema = createInsertSchema(sapetAttendance).omit({ id: true, markedAt: true });
 export type SapetAttendance = typeof sapetAttendance.$inferSelect;
 export type InsertSapetAttendance = z.infer<typeof insertSapetAttendanceSchema>;
+
+export type CertificateTemplate = typeof certificateTemplates.$inferSelect;
+export type InsertCertificateTemplate = z.infer<typeof insertCertificateTemplateSchema>;
+export type Certificate = typeof certificates.$inferSelect;
+export type InsertCertificate = z.infer<typeof insertCertificateSchema>;

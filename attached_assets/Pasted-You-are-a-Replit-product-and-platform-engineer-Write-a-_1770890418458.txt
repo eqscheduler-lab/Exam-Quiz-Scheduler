@@ -1,0 +1,65 @@
+You are a Replit product and platform engineer.
+
+Write a formal Replit-style RFC / feature proposal for adding a QR-verified certificate generation feature to an already existing Replit-hosted web application.
+
+Assume:
+- The app already has authentication, a database, and an admin panel
+- A staff (or users) table already exists
+- This feature is an extension, not a new standalone product
+
+The proposal must be technical, structured, and suitable for internal engineering review.
+
+The feature should include:
+
+1. Admin-managed certificate templates
+   - Support HTML/CSS templates (preferred), with optional image or PDF backgrounds
+   - Dynamic placeholders such as {{name}}, {{role}}, {{issued_at}}, {{certificate_id}}, {{qr_code}}
+   - Template versioning to ensure previously issued certificates remain reproducible
+
+2. Staff-based certificate issuance
+   - Certificates are issued by selecting staff records from the existing staff list
+   - No manual data duplication; certificates reference immutable staff snapshots
+   - Support bulk issuance from the admin panel
+
+3. Certificate generation service
+   - Generate globally unique, non-sequential certificate IDs (UUID or cryptographic hash)
+   - Render certificates as PDFs
+   - Embed a QR code pointing to a public verification URL
+   - Store generated artifacts in filesystem or object storage
+
+4. QR-based verification
+   - Public verification endpoint at /verify/{certificate_id}
+   - Server-side validation against the existing database
+   - Clear valid / revoked / expired states
+   - Optional human-readable verification page and JSON response
+
+5. Security and integrity requirements
+   - No PII embedded in QR codes
+   - Unguessable certificate IDs
+   - Immutable certificate records with revocation support
+
+6. Integration with existing app architecture
+   - Reuse existing authentication, authorization, and admin UI patterns
+   - Minimal disruption to current data models
+   - Backward-compatible migrations
+
+The RFC must include the following sections:
+- Title
+- Status
+- Motivation
+- Goals
+- Non-Goals
+- Proposed Solution
+- Technical Design
+- Integration with Existing App
+- Data Model (example schemas)
+- Security Considerations
+- Developer Experience
+- Use Cases
+- Alternatives Considered
+- Open Questions
+- Success Metrics
+- Conclusion
+
+Tone should be clear, concise, and engineering-focused.
+Do not include marketing language.

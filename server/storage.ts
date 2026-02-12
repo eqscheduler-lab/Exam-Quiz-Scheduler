@@ -1,9 +1,11 @@
 import { db } from "./db";
 import {
   users, subjects, students, examEvents, settings, classes, loginAudit, learningSummaries, learningSupport, sapetAttendance, departmentsTable,
+  certificateTemplates, certificates,
   type User, type InsertUser, type Subject, type InsertExamEvent, type ExamEvent, type Class, type LoginAudit, type InsertLoginAudit,
   type LearningSummary, type InsertLearningSummary, type LearningSupport, type InsertLearningSupport, type SapetAttendance, type InsertSapetAttendance,
-  type Department, type InsertDepartment
+  type Department, type InsertDepartment,
+  type CertificateTemplate, type InsertCertificateTemplate, type Certificate, type InsertCertificate
 } from "@shared/schema";
 import { eq, and, count, gte, lte, desc, sql } from "drizzle-orm";
 
@@ -101,6 +103,21 @@ export interface IStorage {
   createDepartment(dept: InsertDepartment): Promise<Department>;
   updateDepartment(id: number, dept: Partial<InsertDepartment>): Promise<Department>;
   deleteDepartment(id: number): Promise<void>;
+
+  // Certificate Templates
+  getAllCertificateTemplates(): Promise<CertificateTemplate[]>;
+  getCertificateTemplateById(id: number): Promise<CertificateTemplate | undefined>;
+  createCertificateTemplate(template: InsertCertificateTemplate): Promise<CertificateTemplate>;
+  updateCertificateTemplate(id: number, template: Partial<InsertCertificateTemplate>): Promise<CertificateTemplate>;
+  deleteCertificateTemplate(id: number): Promise<void>;
+
+  // Certificates
+  getAllCertificates(): Promise<(Certificate & { template: CertificateTemplate; recipient: User; issuer: User })[]>;
+  getCertificateByPublicId(publicId: string): Promise<(Certificate & { template: CertificateTemplate; recipient: User; issuer: User }) | undefined>;
+  getCertificateById(id: number): Promise<Certificate | undefined>;
+  createCertificate(cert: InsertCertificate): Promise<Certificate>;
+  updateCertificate(id: number, cert: Partial<InsertCertificate>): Promise<Certificate>;
+  getCertificatesByRecipient(userId: number): Promise<(Certificate & { template: CertificateTemplate })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -726,6 +743,106 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDepartment(id: number): Promise<void> {
     await db.delete(departmentsTable).where(eq(departmentsTable.id, id));
+  }
+
+  // Certificate Templates
+  async getAllCertificateTemplates(): Promise<CertificateTemplate[]> {
+    return await db.select().from(certificateTemplates).orderBy(desc(certificateTemplates.createdAt));
+  }
+
+  async getCertificateTemplateById(id: number): Promise<CertificateTemplate | undefined> {
+    const [template] = await db.select().from(certificateTemplates).where(eq(certificateTemplates.id, id));
+    return template;
+  }
+
+  async createCertificateTemplate(template: InsertCertificateTemplate): Promise<CertificateTemplate> {
+    const [created] = await db.insert(certificateTemplates).values(template).returning();
+    return created;
+  }
+
+  async updateCertificateTemplate(id: number, template: Partial<InsertCertificateTemplate>): Promise<CertificateTemplate> {
+    const [updated] = await db.update(certificateTemplates)
+      .set({ ...template, updatedAt: new Date() })
+      .where(eq(certificateTemplates.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCertificateTemplate(id: number): Promise<void> {
+    await db.delete(certificateTemplates).where(eq(certificateTemplates.id, id));
+  }
+
+  // Certificates
+  async getAllCertificates(): Promise<(Certificate & { template: CertificateTemplate; recipient: User; issuer: User })[]> {
+    const recipientAlias = db.select().from(users).as("recipient");
+    const results = await db.select({
+      cert: certificates,
+      template: certificateTemplates,
+      recipient: users,
+    })
+    .from(certificates)
+    .innerJoin(certificateTemplates, eq(certificates.templateId, certificateTemplates.id))
+    .innerJoin(users, eq(certificates.recipientUserId, users.id))
+    .orderBy(desc(certificates.issuedAt));
+
+    const allUsers = await db.select().from(users);
+    return results.map(r => ({
+      ...r.cert,
+      template: r.template,
+      recipient: r.recipient,
+      issuer: allUsers.find(u => u.id === r.cert.issuedByUserId) || r.recipient,
+    }));
+  }
+
+  async getCertificateByPublicId(publicId: string): Promise<(Certificate & { template: CertificateTemplate; recipient: User; issuer: User }) | undefined> {
+    const results = await db.select({
+      cert: certificates,
+      template: certificateTemplates,
+      recipient: users,
+    })
+    .from(certificates)
+    .innerJoin(certificateTemplates, eq(certificates.templateId, certificateTemplates.id))
+    .innerJoin(users, eq(certificates.recipientUserId, users.id))
+    .where(eq(certificates.publicId, publicId))
+    .limit(1);
+
+    if (results.length === 0) return undefined;
+    const r = results[0];
+    const [issuer] = await db.select().from(users).where(eq(users.id, r.cert.issuedByUserId));
+    return {
+      ...r.cert,
+      template: r.template,
+      recipient: r.recipient,
+      issuer: issuer || r.recipient,
+    };
+  }
+
+  async getCertificateById(id: number): Promise<Certificate | undefined> {
+    const [cert] = await db.select().from(certificates).where(eq(certificates.id, id));
+    return cert;
+  }
+
+  async createCertificate(cert: InsertCertificate): Promise<Certificate> {
+    const [created] = await db.insert(certificates).values(cert).returning();
+    return created;
+  }
+
+  async updateCertificate(id: number, cert: Partial<InsertCertificate>): Promise<Certificate> {
+    const [updated] = await db.update(certificates).set(cert).where(eq(certificates.id, id)).returning();
+    return updated;
+  }
+
+  async getCertificatesByRecipient(userId: number): Promise<(Certificate & { template: CertificateTemplate })[]> {
+    const results = await db.select({
+      cert: certificates,
+      template: certificateTemplates,
+    })
+    .from(certificates)
+    .innerJoin(certificateTemplates, eq(certificates.templateId, certificateTemplates.id))
+    .where(eq(certificates.recipientUserId, userId))
+    .orderBy(desc(certificates.issuedAt));
+
+    return results.map(r => ({ ...r.cert, template: r.template }));
   }
 }
 

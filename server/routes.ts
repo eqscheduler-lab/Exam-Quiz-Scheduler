@@ -8,6 +8,8 @@ import { z } from "zod";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 import multer from "multer";
+import crypto from "crypto";
+import QRCode from "qrcode";
 import { startOfWeek, endOfWeek, addDays, format, getDay } from "date-fns";
 import { insertUserSchema, BELL_SCHEDULES, getGradeLevel, examEvents, subjects, users, students, settings, classes, userRoles, departments } from "../shared/schema";
 import { getSendGridClient, sendBookingNotification } from "./sendgrid";
@@ -3078,6 +3080,273 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error saving attendance:", err);
       res.status(500).json({ message: "Failed to save attendance" });
+    }
+  });
+
+  // =============================================
+  // Certificate Templates CRUD (Admin only)
+  // =============================================
+  
+  app.get("/api/certificate-templates", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") return res.status(403).json({ message: "Admin only" });
+    
+    const templates = await storage.getAllCertificateTemplates();
+    res.json(templates);
+  });
+
+  app.post("/api/certificate-templates", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") return res.status(403).json({ message: "Admin only" });
+    
+    try {
+      const template = await storage.createCertificateTemplate(req.body);
+      res.json(template);
+    } catch (err) {
+      console.error("Create template error:", err);
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  app.patch("/api/certificate-templates/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") return res.status(403).json({ message: "Admin only" });
+    
+    try {
+      const id = Number(req.params.id);
+      const existing = await storage.getCertificateTemplateById(id);
+      if (!existing) return res.status(404).json({ message: "Template not found" });
+      
+      const template = await storage.updateCertificateTemplate(id, {
+        ...req.body,
+        version: (existing.version || 1) + 1
+      });
+      res.json(template);
+    } catch (err) {
+      console.error("Update template error:", err);
+      res.status(500).json({ message: "Failed to update template" });
+    }
+  });
+
+  app.delete("/api/certificate-templates/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") return res.status(403).json({ message: "Admin only" });
+    
+    try {
+      await storage.deleteCertificateTemplate(Number(req.params.id));
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Delete template error:", err);
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  // =============================================
+  // Certificates CRUD & Issuance (Admin only)
+  // =============================================
+  
+  app.get("/api/certificates", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") return res.status(403).json({ message: "Admin only" });
+    
+    const certs = await storage.getAllCertificates();
+    res.json(certs);
+  });
+
+  app.post("/api/certificates/issue", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") return res.status(403).json({ message: "Admin only" });
+    
+    try {
+      const { templateId, userIds, title } = req.body;
+      
+      if (!templateId || !userIds || !Array.isArray(userIds) || userIds.length === 0 || !title) {
+        return res.status(400).json({ message: "templateId, userIds array, and title are required" });
+      }
+      
+      const template = await storage.getCertificateTemplateById(templateId);
+      if (!template) return res.status(404).json({ message: "Template not found" });
+      
+      const issued: any[] = [];
+      
+      for (const userId of userIds) {
+        const recipient = await storage.getUser(userId);
+        if (!recipient) continue;
+        
+        const publicId = crypto.randomUUID();
+        
+        const cert = await storage.createCertificate({
+          publicId,
+          templateId,
+          recipientUserId: recipient.id,
+          issuedByUserId: user.id,
+          recipientName: recipient.name,
+          recipientRole: recipient.role,
+          recipientDepartment: recipient.department || null,
+          title,
+          status: "ISSUED",
+          revokedAt: null,
+          expiresAt: null,
+          payload: {},
+        });
+        
+        issued.push(cert);
+      }
+      
+      res.json({ issued: issued.length, certificates: issued });
+    } catch (err) {
+      console.error("Issue certificates error:", err);
+      res.status(500).json({ message: "Failed to issue certificates" });
+    }
+  });
+
+  app.post("/api/certificates/:id/revoke", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.role !== "ADMIN") return res.status(403).json({ message: "Admin only" });
+    
+    try {
+      const id = Number(req.params.id);
+      const cert = await storage.updateCertificate(id, { 
+        status: "REVOKED", 
+        revokedAt: new Date() 
+      });
+      res.json(cert);
+    } catch (err) {
+      console.error("Revoke certificate error:", err);
+      res.status(500).json({ message: "Failed to revoke certificate" });
+    }
+  });
+
+  // Certificate PDF generation
+  app.get("/api/certificates/:publicId/pdf", async (req, res) => {
+    try {
+      const cert = await storage.getCertificateByPublicId(req.params.publicId);
+      if (!cert) return res.status(404).json({ message: "Certificate not found" });
+      if (cert.status === "REVOKED") return res.status(410).json({ message: "Certificate has been revoked" });
+      
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const verifyUrl = `${baseUrl}/verify/${cert.publicId}`;
+      
+      const qrDataUrl = await QRCode.toDataURL(verifyUrl, { 
+        width: 150, 
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+      const qrBuffer = Buffer.from(qrDataUrl.split(',')[1], 'base64');
+      
+      const doc = new PDFDocument({ 
+        size: 'A4', 
+        layout: 'landscape',
+        margins: { top: 40, bottom: 40, left: 60, right: 60 }
+      });
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=certificate-${cert.publicId}.pdf`);
+      doc.pipe(res);
+      
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+      
+      // Border
+      doc.rect(20, 20, pageWidth - 40, pageHeight - 40).lineWidth(3).stroke('#1a365d');
+      doc.rect(30, 30, pageWidth - 60, pageHeight - 60).lineWidth(1).stroke('#2b6cb0');
+      
+      // Header
+      doc.fontSize(14).fillColor('#2b6cb0').font('Helvetica')
+         .text('EXAM & QUIZ SCHEDULER', 0, 55, { align: 'center' });
+      
+      // Title
+      doc.fontSize(36).fillColor('#1a365d').font('Helvetica-Bold')
+         .text('CERTIFICATE', 0, 90, { align: 'center' });
+      
+      doc.fontSize(16).fillColor('#4a5568').font('Helvetica')
+         .text(cert.title, 0, 140, { align: 'center' });
+      
+      // Decorative line
+      const lineY = 170;
+      doc.moveTo(200, lineY).lineTo(pageWidth - 200, lineY).lineWidth(2).stroke('#2b6cb0');
+      
+      // "This is awarded to"
+      doc.fontSize(14).fillColor('#718096').font('Helvetica')
+         .text('This certificate is awarded to', 0, 195, { align: 'center' });
+      
+      // Recipient name
+      doc.fontSize(32).fillColor('#1a365d').font('Helvetica-Bold')
+         .text(cert.recipientName, 0, 225, { align: 'center' });
+      
+      // Role & Department
+      let roleText = cert.recipientRole.replace(/_/g, ' ');
+      if (cert.recipientDepartment) {
+        roleText += ` - ${cert.recipientDepartment.replace(/_/g, ' ')}`;
+      }
+      doc.fontSize(14).fillColor('#4a5568').font('Helvetica')
+         .text(roleText, 0, 275, { align: 'center' });
+      
+      // Issue date
+      const issueDateStr = format(new Date(cert.issuedAt), 'MMMM dd, yyyy');
+      doc.fontSize(12).fillColor('#718096').font('Helvetica')
+         .text(`Issued on ${issueDateStr}`, 0, 310, { align: 'center' });
+      
+      // Certificate ID
+      doc.fontSize(9).fillColor('#a0aec0').font('Helvetica')
+         .text(`Certificate ID: ${cert.publicId}`, 0, 340, { align: 'center' });
+      
+      // QR Code
+      doc.image(qrBuffer, pageWidth / 2 - 55, 365, { width: 110 });
+      
+      // Verify text under QR
+      doc.fontSize(8).fillColor('#a0aec0').font('Helvetica')
+         .text('Scan to verify', 0, 480, { align: 'center' });
+      
+      doc.end();
+    } catch (err) {
+      console.error("Generate certificate PDF error:", err);
+      res.status(500).json({ message: "Failed to generate PDF" });
+    }
+  });
+
+  // =============================================
+  // Public Verification Endpoint (NO AUTH)
+  // =============================================
+  
+  app.get("/api/verify/:publicId", async (req, res) => {
+    try {
+      const cert = await storage.getCertificateByPublicId(req.params.publicId);
+      if (!cert) {
+        return res.status(404).json({ 
+          valid: false, 
+          message: "Certificate not found",
+          status: "NOT_FOUND"
+        });
+      }
+      
+      let status = cert.status;
+      if (cert.expiresAt && new Date(cert.expiresAt) < new Date()) {
+        status = "EXPIRED";
+      }
+      
+      res.json({
+        valid: status === "ISSUED",
+        status,
+        certificateId: cert.publicId,
+        recipientName: cert.recipientName,
+        recipientRole: cert.recipientRole.replace(/_/g, ' '),
+        recipientDepartment: cert.recipientDepartment?.replace(/_/g, ' ') || null,
+        title: cert.title,
+        issuedAt: cert.issuedAt,
+        revokedAt: cert.revokedAt,
+        expiresAt: cert.expiresAt,
+      });
+    } catch (err) {
+      console.error("Verify certificate error:", err);
+      res.status(500).json({ valid: false, message: "Verification failed" });
     }
   });
 
