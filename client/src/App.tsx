@@ -22,6 +22,8 @@ import InactiveAccounts from "@/pages/InactiveAccounts";
 import Documentation from "@/pages/Documentation";
 import AcademicPlanningHub from "@/pages/AcademicPlanningHub";
 import ManageDepartments from "@/pages/ManageDepartments";
+import CertificateManagement from "@/pages/CertificateManagement";
+import VerifyCertificate from "@/pages/VerifyCertificate";
 
 function ProtectedRoute({ component: Component, allowedRoles }: { component: React.ComponentType; allowedRoles: string[] }) {
   const { user } = useAuth();
@@ -46,6 +48,7 @@ function Router() {
     return (
       <Switch>
         <Route path="/login" component={LoginPage} />
+        <Route path="/verify/:publicId" component={VerifyCertificate} />
         <Route>
           <Redirect to="/login" />
         </Route>
@@ -86,6 +89,10 @@ function Router() {
       <Route path="/admin/documentation">
         <ProtectedRoute component={Documentation} allowedRoles={["ADMIN"]} />
       </Route>
+      <Route path="/admin/certificates">
+        <ProtectedRoute component={CertificateManagement} allowedRoles={["ADMIN"]} />
+      </Route>
+      <Route path="/verify/:publicId" component={VerifyCertificate} />
       <Route path="/analytics">
         <ProtectedRoute component={Analytics} allowedRoles={["ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "LEAD_TEACHER"]} />
       </Route>
